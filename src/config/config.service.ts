@@ -9,7 +9,7 @@ export class ApiConfigService {
   private get(key: string): string {
     
     const value = this.configService?.get(key);
-    console.log(value);
+    //console.log(value);
     if (isNil(value)) {
       throw new Error(key + ' environment variable does not set');
     }
