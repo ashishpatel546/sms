@@ -33,4 +33,6 @@ export class User {
   
   @Column({ type: 'varchar', nullable: false })
   role: USER_ROLE;
+  @Column({ default: false })
+  is_active: boolean;
 }

@@ -1,8 +1,11 @@
             
+import { Transform } from 'class-transformer';
 import {
+  IsBoolean,
   IsEmail,
   IsEnum,
   IsMobilePhone,
+  IsNotEmpty,
   IsOptional,
   IsString,
   IsStrongPassword,
@@ -16,7 +19,7 @@ import { USER_ROLE } from 'src/users/entity/user.entity';
 @ValidatorConstraint({ name: 'isEmailInDomain', async: false })
 class IsEmailInDomainConstraint implements ValidatorConstraintInterface {
   validate(email: string) {
-    const domain = 'abc.in'; // Domain of blinkcharging
+    const domain = 'abc.com'; // Domain of blinkcharging
     const emailParts = email.split('@');
    
     return emailParts.length === 2 && emailParts[1] === domain;
@@ -24,9 +27,10 @@ class IsEmailInDomainConstraint implements ValidatorConstraintInterface {
 }
 
 export function IsEmailInDomain(validationOptions?: ValidationOptions) {
-  return function (object: unknown, propertyName: string) {
+  return function (object: any, propertyName: string) {
     //console.log(object)
     registerDecorator({
+      name:"isEmailInDomain",
       target: object.constructor,
       propertyName: propertyName,
       options: validationOptions,
@@ -36,12 +40,13 @@ export function IsEmailInDomain(validationOptions?: ValidationOptions) {
 }
 
 export class CreateUserDto {
-  @IsEmailInDomain({ message: 'Email must be blink email' })
-  @IsEmail(
-    { domain_specific_validation: true },
-    { message: 'Must have valid email' },
-  )
   
+  // @IsEmail(
+  //   { domain_specific_validation: true },
+  //   { message: 'Must have valid email' },
+  // )
+  @IsEmail()
+  @IsEmailInDomain({ message: 'Email must be blink email' })
   email: string;
 
   
@@ -53,6 +58,7 @@ export class CreateUserDto {
   last_name: string;
 
  @IsOptional()
+ 
   @IsMobilePhone()
   mobile: string;
 
@@ -79,4 +85,16 @@ export class CreateUserDto {
     message: `Must have role TECH_ROLE | ADMIN |SUPER_ADMIN`,
   })
   role: USER_ROLE;
+
+}
+
+
+export class ActivateDeactivateUserParams {
+  @IsNotEmpty()
+  email: string;
+
+  @IsNotEmpty()
+  @IsBoolean()
+  @Transform(({value})=>value==='true')
+  is_active: boolean;
 }

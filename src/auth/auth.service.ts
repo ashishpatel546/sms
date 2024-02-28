@@ -7,7 +7,6 @@ import { SignInDto } from './dto/sign-in.dto';
 
 @Injectable()
 export class AuthService {
-  //private readonly logger = new Logger(AuthService.name);
   constructor(
     private readonly userService: UsersService,
     private jwtService: JwtService
@@ -30,7 +29,7 @@ export class AuthService {
       email: user.email,
       sub: user.id,
       role: user.role,
-      //is_active: user.is_active,
+      is_active: user.is_active,
     };
     return {
       access_token: this.jwtService.sign(payload),
