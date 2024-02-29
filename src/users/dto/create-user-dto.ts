@@ -19,7 +19,7 @@ import { USER_ROLE } from 'src/users/entity/user.entity';
 @ValidatorConstraint({ name: 'isEmailInDomain', async: false })
 class IsEmailInDomainConstraint implements ValidatorConstraintInterface {
   validate(email: string) {
-    const domain = 'abc.com'; // Domain of blinkcharging
+    const domain = 'gmail.com'; // Domain of blinkcharging
     const emailParts = email.split('@');
    
     return emailParts.length === 2 && emailParts[1] === domain;
