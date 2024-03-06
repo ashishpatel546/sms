@@ -1,4 +1,17 @@
-import { Body, Controller, Post, BadRequestException, UseGuards, Patch, Query, ParseBoolPipe, Param, UsePipes, ValidationPipe, Get } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Post,
+  BadRequestException,
+  UseGuards,
+  Patch,
+  Query,
+  ParseBoolPipe,
+  Param,
+  UsePipes,
+  ValidationPipe,
+  Get,
+} from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user-dto';
 import { UsersService } from './users.service';
 import { AdminGuard } from 'src/guards/adminPermission.guard';
@@ -16,7 +29,7 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
   @UseGuards(SuperAdminLimitGuard)
   @Post('/register')
-  @UsePipes(new ValidationPipe({ transform: true}))
+  @UsePipes(new ValidationPipe({ transform: true }))
   async register(@Body() createUserDto: CreateUserDto) {
     try {
       const createdUser = await this.usersService.createUser(createUserDto);
@@ -44,24 +57,25 @@ export class UsersController {
     @Body() body: ChangePasswordDto,
     @CurrentUser() user: Partial<User>,
   ) {
-    //console.log('body.oldPassword', body.oldPassword)
     return this.usersService.changePassword(
       user.email,
       body.oldPassword,
       body.newPassword,
     );
   }
-  @Patch('email/forgot-password/:email')
-  public async sendEmailForgotPassword(@Param() params): Promise<string> {
+  @Patch('forgot-password/:email')
+  public async forgotPassword(@Param('email') email: string): Promise<string> {
     try {
-      var isEmailSent = await this.usersService.sendEmailForgotPassword(params.email);
-      if(isEmailSent){
-        return "LOGIN.EMAIL_RESENT";
+      const isEmailSent = await this.usersService.sendEmailForgotPassword(
+        email
+      );
+      if (isEmailSent) {
+        return 'Email send sucessfully';
       } else {
-        return "REGISTRATION.ERROR.MAIL_NOT_SENT";
+        return 'Email not sent';
       }
-    } catch(error) {
-      return "LOGIN.ERROR.SEND_EMAIL";
+    } catch (error) {
+      throw new BadRequestException(error.message);
     }
   }
   @ApiBearerAuth('access-token')
@@ -69,8 +83,11 @@ export class UsersController {
   @UseGuards(JwtAuthGuard)
   @Patch('/reset-password')
   resetPassword(@Body() body: ResetPasswordDto) {
-
-    return this.usersService.resetPassword(body.email,body.otp,body.newPassword);
+    return this.usersService.resetPassword(
+      body.email,
+      body.otp,
+      body.newPassword,
+    );
   }
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard)
@@ -78,7 +95,4 @@ export class UsersController {
   getUserInfo(@CurrentUser() user: Partial<User>) {
     return { user: user ?? null };
   }
-
-
-
 }

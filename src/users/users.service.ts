@@ -30,6 +30,7 @@ const client = createClient({
     port: 12697,
   },
 });
+// client.connect();
 
 @Injectable()
 export class UsersService {
@@ -232,14 +233,14 @@ export class UsersService {
     }
   }
 
-
   async sendEmailForgotPassword(email: string): Promise<boolean> {
     var userFromDb = await this.findUserByEmail(email);
     if (!userFromDb)
-      throw new HttpException('LOGIN.USER_NOT_FOUND', HttpStatus.NOT_FOUND);
+      throw new HttpException(
+        'User does not exist with email',
+        HttpStatus.NOT_FOUND,
+      );
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-    //client.on('error',err => console.log('Redis Client Error',err));
     await client.connect();
     await client.set(email, otp, { EX: 900 });
 
@@ -258,76 +259,86 @@ export class UsersService {
         name: 'ABC school',
         address: config.mail.user,
       },
-      to: email, // list of receivers (separated by ,)
+      to: email,
       subject: 'Frogotten Password',
       text: 'Forgot Password',
       html:
-        'Hi! <br><br> If you requested to reset your password<br><br>' +
+        'Hi! <br><br> If you requested to reset your password<br><br>  Your OTP is ' +
+        otp +
+        '<br><br>' +
         '<a href=' +
         config.host.url +
         ':' +
         config.host.port +
-        '/users/email/reset-password/' +
-        otp +
-        '>Click here</a>', // html body
+        '/users/email/reset-password/>Click here</a>',
     };
 
-    var sent = await new Promise<boolean>(async function (resolve, reject) {
-      return await transporter.sendMail(mailOptions, async (error, info) => {
-        if (error) {
-          console.log('Message sent: %s', error);
-          return reject(false);
-        }
-        console.log('Message sent: %s', info.messageId);
-        resolve(true);
-      });
-    });
-    return sent;
+    // var sent = await new Promise<boolean>(async function (resolve, reject) {
+    //   return await transporter.sendMail(mailOptions, async (error, info) => {
+    //     if (error) {
+    //       console.log('Message sent: %s', error);
+    //       return reject(false);
+    //     }
+    //     console.log('Message sent: %s', info.messageId);
+    //     resolve(true);
+    //   });
+    // });
+    try {
+      const info = await transporter.sendMail(mailOptions);
+      console.log('Message sent: %s', info.messageId);
+      await client.disconnect();
+      return true;
+    } catch (error) {
+      await client.disconnect();
+      console.error('Error sending email:', error);
+      return false;
+    }
+
+    // return info;
   }
 
   async verifyOTP(email: string, otp: string): Promise<boolean> {
     try {
       await client.connect();
       const storedOTP = await client.get(email);
-      console.log('storedOTP', storedOTP);
       if (storedOTP === otp) {
         await client.del(email);
+        await client.disconnect();
         return true;
       } else {
+        await client.disconnect();
         return false;
       }
-      console.log('hi2')
     } catch (error) {
-      // Handle any errors here
-      console.error('Error verifying OTP:', error);
-      return false;
+      throw new BadRequestException(error.message);
     }
   }
-  
+
   async resetPassword(
     email: string,
     otp: string,
     newPassword: string,
-  ): Promise<string>{
-    try{
-    const isOTPValid = await this.verifyOTP(email, otp);
-    console.log('isOTPValid', isOTPValid);
-    if(isOTPValid){
-      const hashedPassword=await this.hashPassword(newPassword);
-      console.log('hashedPassword', hashedPassword)
-      await this.user
-        .createQueryBuilder()
-        .update('user')
-        .set({
-          password: hashedPassword,
-        })
-        .where('email= :email', { email: email })
-        .execute();
-        console.log('hi1');
-      }} catch(error){
+  ): Promise<string> {
+    try {
+      const isOTPValid = await this.verifyOTP(email, otp);
+      if (isOTPValid) {
+        const hashedPassword = await this.hashPassword(newPassword);
+        await this.user
+          .createQueryBuilder()
+          .update('user')
+          .set({
+            password: hashedPassword,
+          })
+          .where('email= :email', { email: email })
+          .execute();
+          
+        return 'Password changed successfully';
+      } else {
+        return 'OTP invalid';
+      }
+    } catch (error) {
       throw new BadRequestException(error.message);
     }
-    return 'Password changed successfully';
   }
 
   async countSuperAdmins(): Promise<number> {
@@ -340,8 +351,7 @@ export class UsersService {
 
       return result;
     } catch (error) {
-      console.error('Error counting superadmins:', error);
-      throw error;
+      throw new BadRequestException(error.message);
     }
   }
 }

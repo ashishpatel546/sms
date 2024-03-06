@@ -1,4 +1,4 @@
-export default{
+export default {
     "mail":{
         "host": "smtp.gmail.com",
         "port":587,
@@ -10,5 +10,4 @@ export default{
         "url": "http://localhost",
         "port": "3000"
     }
-
 }
