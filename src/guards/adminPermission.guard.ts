@@ -16,6 +16,9 @@ export class AdminGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const reqObj: Request = context.switchToHttp().getRequest();
     const user: Partial<User> = reqObj.user;
+    const params = reqObj.params;
+
+    const userData = await this.userService.findUserByEmail(params.email);
 
     const currentUserData = await this.userService.findUserByEmail(user.email);
     const currentUser = currentUserData;
@@ -24,7 +27,11 @@ export class AdminGuard implements CanActivate {
       return true;
     }
 
-    if (currentUser?.is_active && currentUser.role === USER_ROLE.admin) {
+    if (
+      currentUser?.is_active &&
+      currentUser.role === USER_ROLE.admin &&
+      userData.role !== USER_ROLE.superadmin
+    ) {
       return true;
     } else {
       return false;

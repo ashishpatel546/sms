@@ -9,6 +9,9 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 
+import redis from 'redis';
+import { createClient } from 'redis';
+
 import { UpdateResult } from 'typeorm';
 import { CreateUserDto } from './dto/create-user-dto';
 import { User } from './entity/user.entity';
@@ -17,17 +20,20 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import { genSalt, compare, hash } from 'bcryptjs';
 import { error } from 'console';
 import { JwtService } from '@nestjs/jwt';
-import {default as config} from 'src/config/config';
+import { default as config } from 'src/config/config';
 
-const nodemailer = require("nodemailer")
+const nodemailer = require('nodemailer');
+const client = createClient({
+  password: 'sLTUz5INwHJTCEDWyfetL5gSfxKCxQoH',
+  socket: {
+    host: 'redis-12697.c330.asia-south1-1.gce.cloud.redislabs.com',
+    port: 12697,
+  },
+});
 
 @Injectable()
 export class UsersService {
-  constructor(
-   
-
-    @InjectDataSource('USER') private readonly user: DataSource,
-  ) {}
+  constructor(@InjectDataSource('USER') private readonly user: DataSource) {}
 
   async findUserByEmail(email: string): Promise<Partial<User>> {
     try {
@@ -181,7 +187,6 @@ export class UsersService {
         throw new NotFoundException('user not found with given email');
       }
       const isVerified = await this.verifyPassword(user?.password, oldPassword);
-      console.log('hi2');
       if (!isVerified) {
         //console.log('hi2')
         throw new BadRequestException('Password does not matched');
@@ -196,12 +201,10 @@ export class UsersService {
         })
         .where('email= :email', { email: email })
         .execute();
-      console.log('hi3');
       // this.logger.log(`user info modified by user. Email: ${email}`);
     } catch (error) {
       // this.logger.error(error.message);
       //this.logger.error('unable to update user info');
-      console.log('error ane vali h');
       throw new BadRequestException(error.message);
     }
     return 'Password Changed Successfully';
@@ -228,73 +231,117 @@ export class UsersService {
       return [false, null];
     }
   }
-   createForgottenPasswordToken(email: string) {
-    // var forgottenPassword= await this.findUserByEmail(email);
-    // if (forgottenPassword && ( (new Date().getTime() - forgottenPassword.timestamp.getTime()) / 60000 < 15 )){
-    //   throw new HttpException('RESET_PASSWORD.EMAIL_SENT_RECENTLY', HttpStatus.INTERNAL_SERVER_ERROR);
-    // } else {
-    //   var forgottenPasswordModel = await this.forgottenPasswordModel.findOneAndUpdate(
-    //     {email: email},
-        // { 
-        //   email: email,
-          return (Math.floor(Math.random() * (9000000)) + 1000000).toString(); //Generate 7 digits number,
-          // timestamp: new Date()
-      //   },
-      //   {upsert: true, new: true}
-      // // );
-      // if(forgottenPasswordModel){
-      //   return forgottenPasswordModel;
-      // } else {
-      //   throw new HttpException('LOGIN.ERROR.GENERIC_ERROR', HttpStatus.INTERNAL_SERVER_ERROR);
-      // }
-   // }
-  }
 
 
   async sendEmailForgotPassword(email: string): Promise<boolean> {
     var userFromDb = await this.findUserByEmail(email);
-    if(!userFromDb) throw new HttpException('LOGIN.USER_NOT_FOUND', HttpStatus.NOT_FOUND);
+    if (!userFromDb)
+      throw new HttpException('LOGIN.USER_NOT_FOUND', HttpStatus.NOT_FOUND);
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-    var tokenModel = await this.createForgottenPasswordToken(email);
+    //client.on('error',err => console.log('Redis Client Error',err));
+    await client.connect();
+    await client.set(email, otp, { EX: 900 });
 
-    if(tokenModel){
-        let transporter = nodemailer.createTransport({
-         service: 'gmail',
-          host: config.mail.host,
-            port: config.mail.port,
-            secure: config.mail.secure, // true for 465, false for other ports
-            auth: {
-                user: config.mail.user,
-                pass: config.mail.pass
-            }
-        });
-    
-        let mailOptions = {
-          from: {
-            name: 'ABC school',
-            address: config.mail.user
-          }, 
-          to: email, // list of receivers (separated by ,)
-          subject: 'Frogotten Password', 
-          text: 'Forgot Password',
-          html: 'Hi! <br><br> If you requested to reset your password<br><br>'+
-          '<a href='+ config.host.url + ':' + config.host.port +'/users/email/reset-password/'+ tokenModel + '>Click here</a>'  // html body
-        };
-    
-        var sent = await new Promise<boolean>(async function(resolve, reject) {
-          return await transporter.sendMail(mailOptions, async (error, info) => {
-              if (error) {      
-                console.log('Message sent: %s', error);
-                return reject(false);
-              }
-              console.log('Message sent: %s', info.messageId);
-              resolve(true);
-          });      
+    let transporter = nodemailer.createTransport({
+      service: 'gmail',
+      host: config.mail.host,
+      port: config.mail.port,
+      secure: config.mail.secure, // true for 465, false for other ports
+      auth: {
+        user: config.mail.user,
+        pass: config.mail.pass,
+      },
+    });
+    let mailOptions = {
+      from: {
+        name: 'ABC school',
+        address: config.mail.user,
+      },
+      to: email, // list of receivers (separated by ,)
+      subject: 'Frogotten Password',
+      text: 'Forgot Password',
+      html:
+        'Hi! <br><br> If you requested to reset your password<br><br>' +
+        '<a href=' +
+        config.host.url +
+        ':' +
+        config.host.port +
+        '/users/email/reset-password/' +
+        otp +
+        '>Click here</a>', // html body
+    };
+
+    var sent = await new Promise<boolean>(async function (resolve, reject) {
+      return await transporter.sendMail(mailOptions, async (error, info) => {
+        if (error) {
+          console.log('Message sent: %s', error);
+          return reject(false);
+        }
+        console.log('Message sent: %s', info.messageId);
+        resolve(true);
+      });
+    });
+    return sent;
+  }
+
+  async verifyOTP(email: string, otp: string): Promise<boolean> {
+    try {
+      await client.connect();
+      const storedOTP = await client.get(email);
+      console.log('storedOTP', storedOTP);
+      if (storedOTP === otp) {
+        await client.del(email);
+        return true;
+      } else {
+        return false;
+      }
+      console.log('hi2')
+    } catch (error) {
+      // Handle any errors here
+      console.error('Error verifying OTP:', error);
+      return false;
+    }
+  }
+  
+  async resetPassword(
+    email: string,
+    otp: string,
+    newPassword: string,
+  ): Promise<string>{
+    try{
+    const isOTPValid = await this.verifyOTP(email, otp);
+    console.log('isOTPValid', isOTPValid);
+    if(isOTPValid){
+      const hashedPassword=await this.hashPassword(newPassword);
+      console.log('hashedPassword', hashedPassword)
+      await this.user
+        .createQueryBuilder()
+        .update('user')
+        .set({
+          password: hashedPassword,
         })
+        .where('email= :email', { email: email })
+        .execute();
+        console.log('hi1');
+      }} catch(error){
+      throw new BadRequestException(error.message);
+    }
+    return 'Password changed successfully';
+  }
 
-        return sent;
-    } else {
-      throw new HttpException('REGISTER.USER_NOT_REGISTERED', HttpStatus.FORBIDDEN);
+  async countSuperAdmins(): Promise<number> {
+    try {
+      const result = await this.user
+        .getRepository(User)
+        .createQueryBuilder('user')
+        .where('user.role = :role', { role: 'SUPER_ADMIN' })
+        .getCount();
+
+      return result;
+    } catch (error) {
+      console.error('Error counting superadmins:', error);
+      throw error;
     }
   }
 }

@@ -7,12 +7,14 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { ChangePasswordDto } from './dto/changePassword.dto';
 import { CurrentUser } from 'src/decorators/current-user.decorator';
 import { User } from './entity/user.entity';
+import { SuperAdminLimitGuard } from 'src/guards/superAdminLimit.guard';
+import { ResetPasswordDto } from './dto/resetPassword.dto';
 
 @ApiTags('User')
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
-
+  @UseGuards(SuperAdminLimitGuard)
   @Post('/register')
   @UsePipes(new ValidationPipe({ transform: true}))
   async register(@Body() createUserDto: CreateUserDto) {
@@ -49,7 +51,7 @@ export class UsersController {
       body.newPassword,
     );
   }
-  @Get('email/forgot-password/:email')
+  @Patch('email/forgot-password/:email')
   public async sendEmailForgotPassword(@Param() params): Promise<string> {
     try {
       var isEmailSent = await this.usersService.sendEmailForgotPassword(params.email);
@@ -61,6 +63,20 @@ export class UsersController {
     } catch(error) {
       return "LOGIN.ERROR.SEND_EMAIL";
     }
+  }
+  @ApiBearerAuth('access-token')
+  //@UseGuards(AdminGuard)
+  @UseGuards(JwtAuthGuard)
+  @Patch('/reset-password')
+  resetPassword(@Body() body: ResetPasswordDto) {
+
+    return this.usersService.resetPassword(body.email,body.otp,body.newPassword);
+  }
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard)
+  @Get('/user-info')
+  getUserInfo(@CurrentUser() user: Partial<User>) {
+    return { user: user ?? null };
   }
 
 
