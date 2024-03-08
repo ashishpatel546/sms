@@ -8,6 +8,8 @@ import { validate } from 'src/env-validation';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DbConfig } from 'src/config/dbconfig';
 import { SharedModule } from './config/shared.module';
+import { AdminModule } from './admin/admin.module';
+import { StudentModule } from './student/student.module';
 
 @Module({
   imports: [
@@ -20,17 +22,32 @@ import { SharedModule } from './config/shared.module';
       cache: true,
     }),
     TypeOrmModule.forRootAsync({
-      imports : [SharedModule],
+      imports: [SharedModule],
       inject: [DbConfig],
       name: 'USER',
       useFactory: (configService: DbConfig) =>
-      configService.getPostGresConfig(),
+        configService.getPostGresConfig(),
+    }),
+    TypeOrmModule.forRootAsync({
+      imports: [SharedModule],
+      inject: [DbConfig],
+      name: 'STUDENT',
+      useFactory: (configService: DbConfig) =>
+        configService.getPostGresConfig(),
+    }),
+    TypeOrmModule.forRootAsync({
+      imports: [SharedModule],
+      inject: [DbConfig],
+      name: 'PARENT',
+      useFactory: (configService: DbConfig) =>
+        configService.getPostGresConfig(),
     }),
     AuthModule,
-    UsersModule 
-   
+    UsersModule,
+    AdminModule,
+    StudentModule,
   ],
   controllers: [AppController],
-  providers: [AppService]
+  providers: [AppService],
 })
 export class AppModule {}

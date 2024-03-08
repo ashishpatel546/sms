@@ -14,7 +14,7 @@ import {
   ValidatorConstraint,
   ValidatorConstraintInterface,
 } from 'class-validator';
-import { USER_ROLE } from 'src/users/entity/user.entity';
+import { USER_ROLE } from 'src/entities/user.entity';
 
 @ValidatorConstraint({ name: 'isEmailInDomain', async: false })
 class IsEmailInDomainConstraint implements ValidatorConstraintInterface {

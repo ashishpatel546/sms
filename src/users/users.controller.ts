@@ -19,7 +19,7 @@ import { JwtAuthGuard } from 'src/auth/jwt-auth.gaurd';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { ChangePasswordDto } from './dto/changePassword.dto';
 import { CurrentUser } from 'src/decorators/current-user.decorator';
-import { User } from './entity/user.entity';
+import { User } from '../entities/user.entity';
 import { SuperAdminLimitGuard } from 'src/guards/superAdminLimit.guard';
 import { ResetPasswordDto } from './dto/resetPassword.dto';
 

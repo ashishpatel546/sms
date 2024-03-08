@@ -21,18 +21,19 @@ export class User {
   @Column({nullable: false})
   password: string;
 
-  @Column({nullable: false})
-  first_name: string;
+  // @Column({nullable: false})
+  // first_name: string;
 
-  @Column({nullable: true})
-  last_name: string;
+  // @Column({nullable: true})
+  // last_name: string;
   
-  @Column({nullable: true})
-  mobile:string;
+  // @Column({nullable: true})
+  // mobile:string;
 
   
   @Column({ type: 'varchar', nullable: false })
   role: USER_ROLE;
+
   @Column({ default: false })
   is_active: boolean;
 }

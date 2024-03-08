@@ -5,7 +5,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request } from 'express';
-import { USER_ROLE, User } from 'src/users/entity/user.entity';
+import { USER_ROLE, User } from 'src/entities/user.entity';
 import { UsersService } from 'src/users/users.service';
 
 @Injectable()

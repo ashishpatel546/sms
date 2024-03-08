@@ -3,9 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { isNil } from 'lodash';
 
-@Injectable({ scope: Scope.DEFAULT })
+@Injectable()
 export class DbConfig {
-  //prodSchemas: Map<string, string> = new Map();
 
   constructor(private readonly configService: ConfigService) {}
 

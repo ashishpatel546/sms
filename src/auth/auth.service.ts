@@ -1,4 +1,3 @@
-
 import { UsersService } from 'src/users/users.service';
 import { JwtService } from '@nestjs/jwt';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
@@ -9,13 +8,15 @@ import { SignInDto } from './dto/sign-in.dto';
 export class AuthService {
   constructor(
     private readonly userService: UsersService,
-    private jwtService: JwtService
+    private jwtService: JwtService,
+   
   ) {}
+
 
   async validateUser(email: string, password: string) {
     const [isValidUser, user] = await this.userService.validateUser(
       email,
-      password
+      password,
     );
     if (isValidUser) {
       return user;
@@ -34,5 +35,7 @@ export class AuthService {
     return {
       access_token: this.jwtService.sign(payload),
     };
+    
   }
+  
 }

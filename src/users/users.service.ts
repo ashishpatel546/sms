@@ -14,20 +14,21 @@ import { createClient } from 'redis';
 
 import { UpdateResult } from 'typeorm';
 import { CreateUserDto } from './dto/create-user-dto';
-import { User } from './entity/user.entity';
+import { User } from '../entities/user.entity';
 import { DataSource } from 'typeorm';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { genSalt, compare, hash } from 'bcryptjs';
 import { error } from 'console';
 import { JwtService } from '@nestjs/jwt';
 import { default as config } from 'src/config/config';
+import { ResponseStatus, StatusOptions } from 'src/status';
 
 const nodemailer = require('nodemailer');
 const client = createClient({
-  password: 'sLTUz5INwHJTCEDWyfetL5gSfxKCxQoH',
+  password: process.env.REDIS_PASSWORD,
   socket: {
-    host: 'redis-12697.c330.asia-south1-1.gce.cloud.redislabs.com',
-    port: 12697,
+    host: process.env.REDIS_HOST,
+    port: parseInt(process.env.REDIS_PORT),
   },
 });
 // client.connect();
@@ -48,18 +49,31 @@ export class UsersService {
       if (!user) {
         throw new NotFoundException('user does not exist');
       }
-
+      // const userDetails: Partial<User> = {
+      //   ...user,
+      //   password: 'NOT_DISCLOSED',
+      // };
       return {
         email: user.email,
         role: user.role,
         is_active: user.is_active,
       };
+      // return {
+      //   msg: StatusOptions.SUCCESS,
+      //   description: 'user found',
+      //   data: userDetails,
+      // };
     } catch (error) {
       return error.message;
+      // return {
+      //   msg: StatusOptions.FAIL,
+      //   description: error.message,
+      //   data: null,
+      // };
     }
   }
 
-  private async hashPassword(password: string): Promise<string> {
+   async hashPassword(password: string): Promise<string> {
     {
       try {
         const salt = await genSalt(10);
@@ -115,9 +129,9 @@ export class UsersService {
     const hashedPassword = await this.hashPassword(userDto.password);
     const newUser: Partial<User> = {
       email: userDto.email,
-      first_name: userDto.first_name,
-      last_name: userDto.last_name,
-      mobile: userDto.mobile,
+      //first_name: userDto.first_name,
+      //last_name: userDto.last_name,
+      //mobile: userDto.mobile,
       role: userDto.role,
       password: hashedPassword,
     };
@@ -133,9 +147,9 @@ export class UsersService {
       // Save the new user entity to the database
       return {
         email: userDto.email,
-        first_name: userDto.first_name,
-        last_name: userDto.last_name,
-        mobile: userDto.mobile,
+        //first_name: userDto.first_name,
+        //last_name: userDto.last_name,
+       // mobile: userDto.mobile,
         role: userDto.role,
         // password: userDto.password,
       };
@@ -150,6 +164,7 @@ export class UsersService {
   ): Promise<unknown> {
     const checkExistingUser = await this.findUserByEmail(email);
     if (!checkExistingUser) {
+      console.log('email nhi h')
       throw new BadRequestException(`user doesn't exist with email: ${email}`);
     }
     try {
@@ -159,6 +174,7 @@ export class UsersService {
         .set({ is_active: is_activate })
         .where('email = :email', { email: email })
         .execute();
+        console.log('welcome')
 
       // Check if the update was successful
       if (updateResult.affected === 0) {
@@ -167,6 +183,7 @@ export class UsersService {
       const user = await this.findUserByEmail(email);
       return user;
     } catch (error) {
+      console.log('error h')
       throw new BadRequestException(error);
     }
   }
@@ -213,7 +230,7 @@ export class UsersService {
 
   async validateUser(
     email: string,
-    password: string,
+    password: string
   ): Promise<[boolean, Partial<User>]> {
     try {
       const user: User = await this.user
@@ -246,12 +263,12 @@ export class UsersService {
 
     let transporter = nodemailer.createTransport({
       service: 'gmail',
-      host: config.mail.host,
-      port: config.mail.port,
-      secure: config.mail.secure, // true for 465, false for other ports
+      host: process.env.SENDER_MAIL_HOST,
+      port: parseInt(process.env.SENDER_MAIL_PORT),
+      secure: process.env.SENDER_MAIL_SECURE, // true for 465, false for other ports
       auth: {
-        user: config.mail.user,
-        pass: config.mail.pass,
+        user: process.env.SENDER_MAIL_USER,
+        pass: process.env.SENDER_MAIL_PASS,
       },
     });
     let mailOptions = {
@@ -267,9 +284,9 @@ export class UsersService {
         otp +
         '<br><br>' +
         '<a href=' +
-        config.host.url +
+        process.env.RECIEVER_MAIL_HOST +
         ':' +
-        config.host.port +
+        parseInt(process.env.RECIEVER_MAIL_PORT) +
         '/users/email/reset-password/>Click here</a>',
     };
 
@@ -331,7 +348,7 @@ export class UsersService {
           })
           .where('email= :email', { email: email })
           .execute();
-          
+
         return 'Password changed successfully';
       } else {
         return 'OTP invalid';
