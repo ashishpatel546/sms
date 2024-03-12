@@ -7,6 +7,8 @@ import { UsersService } from 'src/users/users.service';
 import { ResponseStatus, StatusOptions } from 'src/status';
 import { Parent } from '../entities/parent.entity';
 import { USER_ROLE, User } from 'src/entities/user.entity';
+import { NewTeacherDto } from './dto/newTeacher.dto';
+import { Teacher } from 'src/entities/teacher.entity';
 // import {v4 as uuidv4} from 'uuid';
 const { v4: uuidv4 } = require('uuid');
 const shortid = require('shortid');
@@ -17,6 +19,7 @@ export class AdminService {
     @InjectDataSource('STUDENT') private readonly student: DataSource,
     @InjectDataSource('PARENT') private readonly parent: DataSource,
     @InjectDataSource('USER') private readonly user: DataSource,
+    @InjectDataSource('TEACHER') private readonly teacher: DataSource,
     private readonly usersService: UsersService,
   ) {}
 
@@ -124,5 +127,73 @@ export class AdminService {
           data: null,
         };
       }
-    } 
+    }
+    
+    async setTeacher(newTeacher: NewTeacherDto):Promise<ResponseStatus<Partial<Teacher>>> {
+      const staff_id = shortid.generate(); 
+      //console.log(stu_id); 
+      const password = newTeacher.first_name + staff_id;
+      const staff_email = staff_id + '_' + newTeacher.first_name + '@gmail.com';
+     // const parent_email = stu_id + '_' + newStudent.first_name + '_parent@gmail.com';
+        const hashedPassword = await this.usersService.hashPassword(password);
+        const teacher: Partial<Teacher> = {
+          teacher_id: staff_id,
+         
+          email: staff_email,
+          created_on: new Date(),
+          updated_on: new Date(),
+          first_name: newTeacher.first_name ?? null,
+          last_name: newTeacher.last_name ?? null,
+          gender: newTeacher.gender,
+          dob: newTeacher.dob,
+          speciality:newTeacher.speciality,
+          qualification:newTeacher.qualification,
+          salary:newTeacher.salary,
+          join_on:newTeacher.join_on,
+          experience:newTeacher.experience,
+          mobile: newTeacher.mobile,
+
+
+
+       
+          is_active: false,
+          password: hashedPassword,
+        };
+  
+       
+  
+        try {
+         
+          
+            
+          await this.teacher
+            .createQueryBuilder()
+            .insert()
+            .into(Teacher)
+            .values(teacher)
+            .execute();
+  
+            await this.user
+            .createQueryBuilder()
+            .insert()
+            .into(User)
+            .values([
+              {email: teacher.email, password: hashedPassword, is_active: teacher.is_active, role: USER_ROLE.faculty},
+              //{email: parent.parent_email, password: hashedPassword, is_active: parent.is_active, role: USER_ROLE.parent}
+            ])
+            .execute();
+  
+          return {
+            msg: StatusOptions.SUCCESS,
+            description: 'user added',
+            data: teacher
+          };
+        } catch (error) {
+          return {
+            msg: StatusOptions.FAIL,
+            description: error.message,
+            data: null,
+          };
+        }
+      } 
 }
