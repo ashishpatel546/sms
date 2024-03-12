@@ -42,6 +42,41 @@ import { StudentModule } from './student/student.module';
       useFactory: (configService: DbConfig) =>
         configService.getPostGresConfig(),
     }),
+    TypeOrmModule.forRootAsync({
+      imports: [SharedModule],
+      inject: [DbConfig],
+      name: 'SUBJECT',
+      useFactory: (configService: DbConfig) =>
+        configService.getPostGresConfig(),
+    }),
+    TypeOrmModule.forRootAsync({
+      imports: [SharedModule],
+      inject: [DbConfig],
+      name: 'GRADE',
+      useFactory: (configService: DbConfig) =>
+        configService.getPostGresConfig(),
+    }),
+    TypeOrmModule.forRootAsync({
+      imports: [SharedModule],
+      inject: [DbConfig],
+      name: 'CLASSROOM',
+      useFactory: (configService: DbConfig) =>
+        configService.getPostGresConfig(),
+    }),
+    TypeOrmModule.forRootAsync({
+      imports: [SharedModule],
+      inject: [DbConfig],
+      name: 'CLASS_STUDENT',
+      useFactory: (configService: DbConfig) =>
+        configService.getPostGresConfig(),
+    }),
+    TypeOrmModule.forRootAsync({
+      imports: [SharedModule],
+      inject: [DbConfig],
+      name: 'GRADE_SUBJECT',
+      useFactory: (configService: DbConfig) =>
+        configService.getPostGresConfig(),
+    }),
     AuthModule,
     UsersModule,
     AdminModule,

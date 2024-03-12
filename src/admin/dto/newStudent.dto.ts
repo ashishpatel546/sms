@@ -41,9 +41,9 @@ export function IsEmailInDomain(validationOptions?: ValidationOptions) {
 
 export class NewStudentDto {
   //Personal Information
-  @IsEmail()
-  @IsEmailInDomain({ message: 'Email must be a school email' })
-  email: string;
+  // @IsEmail()
+  // @IsEmailInDomain({ message: 'Email must be a school email' })
+  // email: string;
 
   // @IsString()
   // password: string;
@@ -76,9 +76,9 @@ export class NewStudentDto {
 
   //Parent Information
 
-  @IsEmail()
-  @IsEmailInDomain({ message: 'Email must be a school email' })
-  parent_email: string;
+  // @IsEmail()
+  // @IsEmailInDomain({ message: 'Email must be a school email' })
+  // parent_email: string;
 
   @IsString()
   father_name: string;

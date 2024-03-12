@@ -5,11 +5,24 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Student } from 'src/entities/student.entity';
 import { UsersService } from 'src/users/users.service';
 import { Parent } from '../entities/parent.entity';
+import { Classroom } from 'src/entities/classroom.entity';
+import { Class_Student } from 'src/entities/class_student.entity';
+import { Grade } from 'src/entities/grade.entity';
+import { Subject } from 'src/entities/subject.entity';
+import { Grade_Subject } from 'src/entities/grade_subject.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Student], 'STUDENT'),TypeOrmModule.forFeature([Parent], 'PARENT') ],
-  providers: [AdminService,UsersService],
+  imports: [
+    TypeOrmModule.forFeature([Student], 'STUDENT'),
+    TypeOrmModule.forFeature([Parent], 'PARENT'),
+    TypeOrmModule.forFeature([Classroom], 'CLASSROOM'),
+    TypeOrmModule.forFeature([Class_Student], 'CLASS_STUDENT'),
+    TypeOrmModule.forFeature([Grade], 'GRADE'),
+    TypeOrmModule.forFeature([Subject], 'SUBJECT'),
+    TypeOrmModule.forFeature([Grade_Subject], 'GRADE_SUBJECT'),
+  ],
+  providers: [AdminService, UsersService],
   controllers: [AdminController],
-  exports: [AdminService]
+  exports: [AdminService],
 })
 export class AdminModule {}
