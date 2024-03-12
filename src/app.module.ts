@@ -10,6 +10,7 @@ import { DbConfig } from 'src/config/dbconfig';
 import { SharedModule } from './config/shared.module';
 import { AdminModule } from './admin/admin.module';
 import { StudentModule } from './student/student.module';
+import { TeacherModule } from './teacher/teacher.module';
 
 @Module({
   imports: [
@@ -39,6 +40,13 @@ import { StudentModule } from './student/student.module';
       imports: [SharedModule],
       inject: [DbConfig],
       name: 'PARENT',
+      useFactory: (configService: DbConfig) =>
+        configService.getPostGresConfig(),
+    }),
+    TypeOrmModule.forRootAsync({
+      imports: [SharedModule],
+      inject: [DbConfig],
+      name: 'TEACHER',
       useFactory: (configService: DbConfig) =>
         configService.getPostGresConfig(),
     }),
@@ -81,6 +89,7 @@ import { StudentModule } from './student/student.module';
     UsersModule,
     AdminModule,
     StudentModule,
+    TeacherModule,
   ],
   controllers: [AppController],
   providers: [AppService],
