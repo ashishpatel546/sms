@@ -10,6 +10,8 @@ import { Class_Student } from 'src/entities/class_student.entity';
 import { Grade } from 'src/entities/grade.entity';
 import { Subject } from 'src/entities/subject.entity';
 import { Grade_Subject } from 'src/entities/grade_subject.entity';
+import { Teacher } from 'src/entities/teacher.entity';
+import { Time_table } from 'src/entities/timetable.entity';
 
 @Module({
   imports: [
@@ -20,6 +22,8 @@ import { Grade_Subject } from 'src/entities/grade_subject.entity';
     TypeOrmModule.forFeature([Grade], 'GRADE'),
     TypeOrmModule.forFeature([Subject], 'SUBJECT'),
     TypeOrmModule.forFeature([Grade_Subject], 'GRADE_SUBJECT'),
+    TypeOrmModule.forFeature([Teacher], 'TEACHER'),
+    TypeOrmModule.forFeature([Time_table], 'TIME_TABLE'),
   ],
   providers: [AdminService, UsersService],
   controllers: [AdminController],
