@@ -7,7 +7,6 @@ export class ApiConfigService {
   constructor(private configService: ConfigService) {}
 
   private get(key: string): string {
-    
     const value = this.configService?.get(key);
     //console.log(value);
     if (isNil(value)) {
@@ -62,5 +61,19 @@ export class ApiConfigService {
     };
   }
 
-  
+  // get sender_redis_info() {
+  //   return {
+  //     host: this.getString('SENDER_REDIS_HOST'),
+  //     port: this.getString('SENDER_REDIS_HOST'),
+  //     secure: this.getString('SENDER_REDIS_SECURE'),
+  //     user: this.getString('SENDER_REDIS_USER'),
+  //     pass: this.getString('SENDER_REDIS_PASS'),
+  //   };
+  // }
+  // get receiver_redis_info() {
+  //   return {
+  //     url: this.getString('RECEIVER_REDIS_URL'),
+  //     port: this.getString('RECEIVER_REDIS_PORT'),
+  //   };
+  // }
 }

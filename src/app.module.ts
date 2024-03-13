@@ -88,10 +88,25 @@ import { TeacherModule } from './teacher/teacher.module';
     TypeOrmModule.forRootAsync({
       imports: [SharedModule],
       inject: [DbConfig],
+
+      name: 'EXAM',
+      useFactory: (configService: DbConfig) =>
+        configService.getPostGresConfig(),
+    }),
+    TypeOrmModule.forRootAsync({
+      imports: [SharedModule],
+      inject: [DbConfig],
+      name: 'EXAM_SCORE',
+      useFactory: (configService: DbConfig) =>
+        configService.getPostGresConfig(),
+    }),
+
+
       name: 'TIME_TABLE',
       useFactory: (configService: DbConfig) =>
         configService.getPostGresConfig(),
     }),
+
     AuthModule,
     UsersModule,
     AdminModule,

@@ -3,6 +3,7 @@ import { AdminService } from './admin.service';
 import { NewStudentDto } from './dto/newStudent.dto';
 import { NewTeacherDto } from './dto/newTeacher.dto';
 import { NewClassDto } from './dto/newClass.dto';
+import { NewExamDto } from './dto/newExam.dto';
 import { UpdateTimetableDto } from './dto/update-timetable.dto';
 import { log } from 'console';
 
@@ -46,5 +47,13 @@ export class AdminController {
     }
   }
 
-  
+  @Get('/get-class-data')
+  getClass() {
+    return this.adminService.getClass();
+  }
+
+  @Post('/set-exam-data')
+  setSubject(@Body() body: NewExamDto) {
+    return this.adminService.setExam(body);
+  }
 }
