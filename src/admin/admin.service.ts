@@ -7,6 +7,8 @@ import { UsersService } from 'src/users/users.service';
 import { ResponseStatus, StatusOptions } from 'src/status';
 import { Parent } from '../entities/parent.entity';
 import { USER_ROLE, User } from 'src/entities/user.entity';
+import { NewTeacherDto } from './dto/newTeacher.dto';
+import { Teacher } from 'src/entities/teacher.entity';
 import { Classroom } from 'src/entities/classroom.entity';
 import { NewClassDto } from './dto/newClass.dto';
 import { Grade } from 'src/entities/grade.entity';
@@ -15,6 +17,8 @@ import { Grade_Subject } from 'src/entities/grade_subject.entity';
 import { Class_Student } from 'src/entities/class_student.entity';
 import { NewExamDto } from './dto/newExam.dto';
 import { Exam } from 'src/entities/exam.entity';
+import { UpdateTimetableDto } from './dto/update-timetable.dto';
+import { Time_table } from 'src/entities/timetable.entity';
 // import {v4 as uuidv4} from 'uuid';
 const { v4: uuidv4 } = require('uuid');
 const shortid = require('shortid');
@@ -25,16 +29,18 @@ export class AdminService {
     @InjectDataSource('STUDENT') private readonly student: DataSource,
     @InjectDataSource('PARENT') private readonly parent: DataSource,
     @InjectDataSource('USER') private readonly user: DataSource,
+    @InjectDataSource('TEACHER') private readonly teacher: DataSource,
     @InjectDataSource('CLASSROOM') private readonly classroom: DataSource,
     @InjectDataSource('CLASS_STUDENT')
     private readonly class_student: DataSource,
     @InjectDataSource('GRADE') private readonly grade: DataSource,
     @InjectDataSource('SUBJECT') private readonly subject: DataSource,
+    @InjectDataSource('TIME_TABLE') private readonly Time_table : DataSource,
     @InjectDataSource('GRADE_SUBJECT')
-    private readonly grade_subject: DataSource,
     @InjectDataSource('EXAM') private readonly exam: DataSource,
     @InjectDataSource('EXAM_SCORE') private readonly exam_score: DataSource,
     private readonly usersService: UsersService,
+
   ) {}
 
   async getStudent(): Promise<ResponseStatus<Student[]>> {
@@ -203,6 +209,7 @@ export class AdminService {
         .values(parent)
         .execute();
 
+
       const class_stud = await this.class_student
         .createQueryBuilder()
         .insert()
@@ -215,6 +222,27 @@ export class AdminService {
         ])
         .execute();
       console.log('class_stud', class_stud);
+
+      const class_id = await this.classroom
+        .createQueryBuilder()
+        .select('classroom_id')
+        .from('classroom', 'c')
+        .where('c.grade = :grade', { grade: student.currentClass })
+       // .andWhere('c.section = :section',{});
+
+      //console.log('class_id', class_id);
+
+      // await this.class_student
+      //   .createQueryBuilder()
+      //   .insert()
+      //   .into(Class_Student)
+      //   .values([
+      //     {
+      //       classroom_id: class_id,
+      //       student_id: student_id,
+      //     },
+      //   ]);
+
       await this.user
         .createQueryBuilder()
         .insert()
@@ -368,7 +396,8 @@ export class AdminService {
             .execute();
         }
       }
-      return {
+    
+     return {
         msg: StatusOptions.SUCCESS,
         description: 'class added',
         data: new_grade,
@@ -381,6 +410,7 @@ export class AdminService {
       };
     }
   }
+
 
   async setExam(newExam: NewExamDto): Promise<ResponseStatus<Partial<Exam>>> {
     try {
@@ -458,4 +488,153 @@ export class AdminService {
       };
     }
   }
+
+    
+    async setTeacher(newTeacher: NewTeacherDto):Promise<ResponseStatus<Partial<Teacher>>> {
+      const staff_id = shortid.generate(); 
+      //console.log(stu_id); 
+      const password = newTeacher.first_name + staff_id;
+      const staff_email = staff_id + '_' + newTeacher.first_name + '@gmail.com';
+     // const parent_email = stu_id + '_' + newStudent.first_name + '_parent@gmail.com';
+        const hashedPassword = await this.usersService.hashPassword(password);
+        const teacher: Partial<Teacher> = {
+          teacher_id: staff_id,
+         
+          email: staff_email,
+          created_on: new Date(),
+          updated_on: new Date(),
+          first_name: newTeacher.first_name ?? null,
+          last_name: newTeacher.last_name ?? null,
+          gender: newTeacher.gender,
+          dob: newTeacher.dob,
+          speciality:newTeacher.speciality,
+          qualification:newTeacher.qualification,
+          salary:newTeacher.salary,
+          join_on:newTeacher.join_on,
+          experience:newTeacher.experience,
+          mobile: newTeacher.mobile,
+          is_active: false,
+          password: hashedPassword,
+        };
+  
+       
+  
+        try {
+          await this.teacher
+            .createQueryBuilder()
+            .insert()
+            .into(Teacher)
+            .values(teacher)
+            .execute();
+  
+            await this.user
+            .createQueryBuilder()
+            .insert()
+            .into(User)
+            .values([
+              {email: teacher.email, password: hashedPassword, is_active: teacher.is_active, role: USER_ROLE.faculty},
+              
+            ])
+            .execute();
+  
+          return {
+            msg: StatusOptions.SUCCESS,
+            description: 'user added',
+            data: teacher
+          };
+        } catch (error) {
+          return {
+            msg: StatusOptions.FAIL,
+            description: error.message,
+            data: null,
+          };
+        }
+      }
+      async addnewTimetable( newTimetable: UpdateTimetableDto): Promise<void> {
+      try {
+        const classroom = await this.classroom
+            .createQueryBuilder()
+            .select('classroom_id')
+            .from('classroom', 'c')
+            .where('c.grade = :grade', { grade: newTimetable.class })
+            .andWhere('c.section = :sections', { sections: newTimetable.section })
+            .getRawOne();
+
+        if (!classroom) {
+            throw new Error('Classroom not found');
+        }
+
+            const class_id = classroom.classroom_id;
+
+            // Check if a timetable entry already exists for the same class_id and day
+            const existingTimetable = await this.Time_table.query(`
+                SELECT * 
+                FROM Time_table 
+                WHERE class_id = $1 AND day = $2
+                LIMIT 1
+            `, [class_id, newTimetable.day]);
+
+            if (existingTimetable && existingTimetable.length) {
+                throw new Error('Timetable entry already exists for this class and day');
+            }
+        // Fetch classroom_id from the classroom table
+        
+        
+
+        
+
+        // Define the number of periods
+        const numberOfPeriods = newTimetable.period; // Assuming 7 periods for a day
+
+        // Initialize the starting index for the subjects array
+        let subjectIndex = 0;
+        let period_value = 1;
+
+        // Iterate over each period and insert timetable entries
+        for (let i = 1; i <= numberOfPeriods; i++) {
+            // Fetch subject name from the subjects array using the current subject index
+            const subjectName = newTimetable.subjects[subjectIndex];
+            // Fetch subject ID and teacher ID for the current subject name
+            const subject = await this.subject
+                .createQueryBuilder()
+                .select('subject_id')
+                .from("subject","s")
+                .where('s.subject_name = :subject_name', { subject_name: subjectName })
+                .getRawOne();
+
+            if (!subject) {
+                throw new Error(`Subject ${subjectName} not found`);
+            }
+
+            const subject_id = subject.subject_id;
+
+            const timeTable: Partial<Time_table> = {
+                class_id: class_id,
+                subject_id:subject_id,
+                subjects:subjectName,
+                class: newTimetable.class,
+                section: newTimetable.section,
+                day: newTimetable.day,
+                period: period_value, 
+            };
+
+            await this.Time_table
+                .createQueryBuilder()
+                .insert()
+                .into(Time_table)
+                .values(timeTable)
+                .execute();
+            subjectIndex = (subjectIndex + 1) ;
+            period_value++;
+        }
+
+        console.log('Timetable entries inserted successfully');
+    } catch (error) {
+        console.error(error.message);
+        throw new BadRequestException(error.message);
+    }
+    
+      
+    } 
+
 }
