@@ -39,17 +39,17 @@ export function IsEmailInDomain(validationOptions?: ValidationOptions) {
   };
 }
 
+
 export class CreateUserDto {
-  
   // @IsEmail(
   //   { domain_specific_validation: true },
   //   { message: 'Must have valid email' },
   // )
+
   @IsEmail()
   @IsEmailInDomain({ message: 'Email must be blink email' })
   email: string;
 
-  
   @IsString()
   first_name: string;
 
@@ -57,8 +57,7 @@ export class CreateUserDto {
   @IsString()
   last_name: string;
 
- @IsOptional()
- 
+  @IsOptional()
   @IsMobilePhone()
   mobile: string;
 
@@ -78,14 +77,12 @@ export class CreateUserDto {
   password: string;
 
   @IsString()
-  cnfpassword:string;
+  cnfpassword: string;
 
-  
   @IsEnum(USER_ROLE, {
     message: `Must have role TECH_ROLE | ADMIN |SUPER_ADMIN`,
   })
   role: USER_ROLE;
-
 }
 
 

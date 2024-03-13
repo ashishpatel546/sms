@@ -13,7 +13,7 @@ import redis from 'redis';
 import { createClient } from 'redis';
 
 import { UpdateResult } from 'typeorm';
-import { CreateUserDto } from './dto/create-user-dto';
+import { CreateUserDto } from './dto/createUser.dto';
 import { User } from '../entities/user.entity';
 import { DataSource } from 'typeorm';
 import { InjectDataSource } from '@nestjs/typeorm';
@@ -310,8 +310,6 @@ export class UsersService {
       console.error('Error sending email:', error);
       return false;
     }
-
-    // return info;
   }
 
   async verifyOTP(email: string, otp: string): Promise<boolean> {

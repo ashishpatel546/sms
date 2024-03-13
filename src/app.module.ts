@@ -77,6 +77,21 @@ import { StudentModule } from './student/student.module';
       useFactory: (configService: DbConfig) =>
         configService.getPostGresConfig(),
     }),
+    TypeOrmModule.forRootAsync({
+      imports: [SharedModule],
+      inject: [DbConfig],
+      name: 'EXAM',
+      useFactory: (configService: DbConfig) =>
+        configService.getPostGresConfig(),
+    }),
+    TypeOrmModule.forRootAsync({
+      imports: [SharedModule],
+      inject: [DbConfig],
+      name: 'EXAM_SCORE',
+      useFactory: (configService: DbConfig) =>
+        configService.getPostGresConfig(),
+    }),
+
     AuthModule,
     UsersModule,
     AdminModule,

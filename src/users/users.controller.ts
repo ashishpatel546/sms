@@ -12,7 +12,7 @@ import {
   ValidationPipe,
   Get,
 } from '@nestjs/common';
-import { CreateUserDto } from './dto/create-user-dto';
+import { CreateUserDto } from './dto/createUser.dto';
 import { UsersService } from './users.service';
 import { AdminGuard } from 'src/guards/adminPermission.guard';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.gaurd';

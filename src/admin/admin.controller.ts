@@ -2,6 +2,7 @@ import { Body, Controller, Get, Post } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { NewStudentDto } from './dto/newStudent.dto';
 import { NewClassDto } from './dto/newClass.dto';
+import { NewExamDto } from './dto/newExam.dto';
 
 @Controller('admin')
 export class AdminController {
@@ -22,8 +23,13 @@ export class AdminController {
     return this.adminService.setClass(body);
   }
 
-  // @Post('/set-subject-data')
-  // setSubject(@Body() body: NewSubjectDto) {
-  //   return this.adminService.setClass(body);
-  // }
+  @Get('/get-class-data')
+  getClass() {
+    return this.adminService.getClass();
+  }
+
+  @Post('/set-exam-data')
+  setSubject(@Body() body: NewExamDto) {
+    return this.adminService.setExam(body);
+  }
 }
