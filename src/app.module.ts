@@ -100,8 +100,9 @@ import { TeacherModule } from './teacher/teacher.module';
       useFactory: (configService: DbConfig) =>
         configService.getPostGresConfig(),
     }),
-
-
+    TypeOrmModule.forRootAsync({
+      imports: [SharedModule],
+      inject: [DbConfig],
       name: 'TIME_TABLE',
       useFactory: (configService: DbConfig) =>
         configService.getPostGresConfig(),
