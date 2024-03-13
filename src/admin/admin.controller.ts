@@ -1,11 +1,14 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { NewStudentDto } from './dto/newStudent.dto';
 import { NewTeacherDto } from './dto/newTeacher.dto';
 import { NewClassDto } from './dto/newClass.dto';
+import { UpdateTimetableDto } from './dto/update-timetable.dto';
+import { log } from 'console';
 
 @Controller('admin')
 export class AdminController {
+    
   constructor(private readonly adminService: AdminService) {}
 
   @Get('/get-student-data')
@@ -27,9 +30,21 @@ export class AdminController {
   setClass(@Body() body: NewClassDto) {
     return this.adminService.setClass(body);
   }
+  @Post('/timetable')
+  async updateTimetable(
+    
+    @Body() newTimetableDto: UpdateTimetableDto,
+  ) {
+    
+    try {
+        
+      await this.adminService.addnewTimetable( newTimetableDto);
+      
+      return { message: 'Timetable updated successfully' };
+    } catch (error) {
+      throw new Error('Failed to update timetable');
+    }
+  }
 
-  // @Post('/set-subject-data')
-  // setSubject(@Body() body: NewSubjectDto) {
-  //   return this.adminService.setClass(body);
-  // }
+  
 }
