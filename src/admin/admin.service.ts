@@ -19,9 +19,21 @@ import { NewExamDto } from './dto/newExam.dto';
 import { Exam } from 'src/entities/exam.entity';
 import { UpdateTimetableDto } from './dto/update-timetable.dto';
 import { Time_table } from 'src/entities/timetable.entity';
+import { NewExamScoreDto } from './dto/newExamScore.dto';
+import { Exam_Score } from 'src/entities/exam_score.entity';
+import { createClient } from 'redis';
+import config from 'src/config/config';
 // import {v4 as uuidv4} from 'uuid';
 const { v4: uuidv4 } = require('uuid');
 const shortid = require('shortid');
+const nodemailer = require('nodemailer');
+// const client = createClient({
+//   password: process.env.REDIS_PASSWORD,
+//   socket: {
+//     host: process.env.REDIS_HOST,
+//     port: parseInt(process.env.REDIS_PORT),
+//   },
+// });
 
 @Injectable()
 export class AdminService {
@@ -35,12 +47,12 @@ export class AdminService {
     private readonly class_student: DataSource,
     @InjectDataSource('GRADE') private readonly grade: DataSource,
     @InjectDataSource('SUBJECT') private readonly subject: DataSource,
-    @InjectDataSource('TIME_TABLE') private readonly Time_table : DataSource,
+    @InjectDataSource('TIME_TABLE') private readonly Time_table: DataSource,
     @InjectDataSource('GRADE_SUBJECT')
+    private readonly grade_subject: DataSource,
     @InjectDataSource('EXAM') private readonly exam: DataSource,
     @InjectDataSource('EXAM_SCORE') private readonly exam_score: DataSource,
     private readonly usersService: UsersService,
-
   ) {}
 
   async getStudent(): Promise<ResponseStatus<Student[]>> {
@@ -101,7 +113,7 @@ export class AdminService {
       fifth: '05',
       sixth: '06',
       seventh: '07',
-      eighth: '08',
+      eigth: '08',
       ninth: '09',
       tenth: '10',
       eleventh: '11',
@@ -209,7 +221,6 @@ export class AdminService {
         .values(parent)
         .execute();
 
-
       const class_stud = await this.class_student
         .createQueryBuilder()
         .insert()
@@ -227,8 +238,8 @@ export class AdminService {
         .createQueryBuilder()
         .select('classroom_id')
         .from('classroom', 'c')
-        .where('c.grade = :grade', { grade: student.currentClass })
-       // .andWhere('c.section = :section',{});
+        .where('c.grade = :grade', { grade: student.currentClass });
+      // .andWhere('c.section = :section',{});
 
       //console.log('class_id', class_id);
 
@@ -396,8 +407,8 @@ export class AdminService {
             .execute();
         }
       }
-    
-     return {
+
+      return {
         msg: StatusOptions.SUCCESS,
         description: 'class added',
         data: new_grade,
@@ -411,6 +422,207 @@ export class AdminService {
     }
   }
 
+  async sendExamReminders() {
+    try {
+      let transporter = nodemailer.createTransport({
+        service: 'gmail',
+        host: 'smtp.gmail.com',
+        port: 587,
+        secure: false, // true for 465, false for other ports
+        auth: {
+          user: 'abcdefg101201@gmail.com',
+          pass: 'bvya hapk iatq plkp',
+        },
+      });
+
+       let mailOptions = {
+         from: {
+           name: 'ABC school',
+           address: 'abcdefg101201@gmail.com',
+         },
+         to: 'avanshika599@gmail.com',
+         subject: 'Exam Reminder',
+         text: 'Exam Reminder',
+         html: 'Exam Reminder',
+       };
+    const info = await transporter.sendMail(mailOptions);
+
+
+      return {
+        msg: StatusOptions.SUCCESS,
+        description: 'Mail sent',
+        data: info,
+      };
+    } catch (error) {
+      return {
+        msg: StatusOptions.FAIL,
+        description: error.message,
+        data: null,
+      };
+    }
+  }
+
+  async findExamGrade(
+    maximum_marks: number,
+    obtained_marks: number,
+  ): Promise<string> {
+    const percentage = (obtained_marks / maximum_marks) * 100;
+
+    if (percentage >= 90) {
+      return 'A+';
+    } else if (percentage >= 80) {
+      return 'A';
+    } else if (percentage >= 70) {
+      return 'B+';
+    } else if (percentage >= 60) {
+      return 'B';
+    } else if (percentage >= 50) {
+      return 'C+';
+    } else if (percentage >= 40) {
+      return 'C';
+    } else if (percentage >= 30) {
+      return 'D+';
+    } else if (percentage >= 20) {
+      return 'D';
+    } else {
+      return 'F';
+    }
+  }
+
+  async setExamScore(
+    newExamScore: NewExamScoreDto,
+  ): Promise<ResponseStatus<Partial<Exam_Score[]>>> {
+    try {
+      const subject_id = await this.subject
+        .createQueryBuilder()
+        .select('subject_id')
+        .from('subject', 's')
+        .where('s.subject_name= :name', { name: newExamScore.subject })
+        .getRawOne();
+
+      const grade_id = await this.grade
+        .createQueryBuilder()
+        .select('grade_id')
+        .from('grade', 's')
+        .where('s.grade= :name', { name: newExamScore.grade })
+        .getRawOne();
+
+      const exam_id = await this.exam
+        .createQueryBuilder()
+        .select('exam_id')
+        .from('exam', 'e')
+        .where('e.exam_name = :name', { name: newExamScore.exam_name })
+        .andWhere('e.acad_year = :acad_year', {
+          acad_year: newExamScore.acad_year,
+        })
+        .andWhere('e.subject_id = :subject_id', {
+          subject_id: subject_id.subject_id,
+        })
+        .andWhere('e.grade_id = :grade_id', { grade_id: grade_id.grade_id })
+        .getRawOne();
+
+      if (!exam_id) {
+        throw new BadRequestException('No such exam exists.');
+      }
+      let leng = newExamScore.student_id.length;
+      let len = newExamScore.obtained_marks.length;
+
+      if (leng !== len) {
+        throw new BadRequestException(
+          `Not enough data for student_id or obtained_marks.`,
+        );
+      }
+
+      for (let i = 0; i < leng; i++) {
+        const obtained_marks = newExamScore.obtained_marks[i];
+        const maximum_marks = newExamScore.maximum_marks;
+        const student_id = newExamScore.student_id[i];
+        const obtained_grade = await this.findExamGrade(
+          maximum_marks,
+          obtained_marks,
+        );
+
+        if (obtained_marks > maximum_marks) {
+          throw new BadRequestException(
+            `Invalid value for obtained_marks for student id ${student_id}.`,
+          );
+        }
+
+        const student = await this.student
+          .createQueryBuilder()
+          .select()
+          .from('student', 's')
+          .where('s.student_id= :id', { id: student_id })
+          .getRawOne();
+
+        if (!student) {
+          throw new BadRequestException(
+            `No student with Id ${student_id} exists.`,
+          );
+        }
+
+        const existingScore = await this.exam_score
+          .createQueryBuilder()
+          .select('exam_id', 'student_id')
+          .from('exam_score', 'e')
+          .where('e.exam_id = :exam_id', { exam_id: exam_id.exam_id })
+          .andWhere('e.student_id = :student_id', {
+            student_id: student.student_id,
+          })
+          .getRawOne();
+
+        if (!existingScore) {
+          await this.exam_score
+            .createQueryBuilder()
+            .insert()
+            .into('exam_score')
+            .values([
+              {
+                score_id: shortid.generate(),
+                exam_id: exam_id.exam_id,
+                student_id: student_id,
+                grade_id: grade_id.grade_id,
+                obtained_marks: obtained_marks,
+                maximum_marks: maximum_marks,
+                obtained_grade: obtained_grade,
+              },
+            ])
+            .execute();
+        } else {
+          await this.exam_score
+            .createQueryBuilder()
+            .update('exam_score')
+            .set({
+              obtained_marks: obtained_marks,
+              maximum_marks: maximum_marks,
+              obtained_grade: obtained_grade,
+            })
+            .where('exam_id = :examId', { examId: exam_id.exam_id })
+            .andWhere('student_id = :studentId', { studentId: student_id })
+            .andWhere('grade_id = :gradeId', { gradeId: grade_id.grade_id })
+            .execute();
+        }
+      }
+      const new_exam_score = await this.exam_score
+        .createQueryBuilder()
+        .select()
+        .from('exam_score', 'e')
+        .where('e.exam_id=:exam', { exam: exam_id.exam_id })
+        .getRawMany();
+
+      return {
+        msg: StatusOptions.SUCCESS,
+        description: 'exam score added',
+        data: new_exam_score,
+      };
+    } catch (error) {
+      return {
+        msg: StatusOptions.FAIL,
+        description: error.message,
+        data: null,
+      };
+    }
+  }
 
   async setExam(newExam: NewExamDto): Promise<ResponseStatus<Partial<Exam>>> {
     try {
@@ -462,6 +674,7 @@ export class AdminService {
         class_id: class_id ? class_id.classroom_id : null,
         subject_id: subject_id.subject_id ?? null,
         exam_name: newExam.exam_name,
+        acad_year: newExam.acad_year,
         exam_date: newExam.exam_date,
         start_time: newExam.start_time,
         duration: newExam.duration,
@@ -489,152 +702,149 @@ export class AdminService {
     }
   }
 
-    
-    async setTeacher(newTeacher: NewTeacherDto):Promise<ResponseStatus<Partial<Teacher>>> {
-      const staff_id = shortid.generate(); 
-      //console.log(stu_id); 
-      const password = newTeacher.first_name + staff_id;
-      const staff_email = staff_id + '_' + newTeacher.first_name + '@gmail.com';
-     // const parent_email = stu_id + '_' + newStudent.first_name + '_parent@gmail.com';
-        const hashedPassword = await this.usersService.hashPassword(password);
-        const teacher: Partial<Teacher> = {
-          teacher_id: staff_id,
-         
-          email: staff_email,
-          created_on: new Date(),
-          updated_on: new Date(),
-          first_name: newTeacher.first_name ?? null,
-          last_name: newTeacher.last_name ?? null,
-          gender: newTeacher.gender,
-          dob: newTeacher.dob,
-          speciality:newTeacher.speciality,
-          qualification:newTeacher.qualification,
-          salary:newTeacher.salary,
-          join_on:newTeacher.join_on,
-          experience:newTeacher.experience,
-          mobile: newTeacher.mobile,
-          is_active: false,
-          password: hashedPassword,
-        };
-  
-       
-  
-        try {
-          await this.teacher
-            .createQueryBuilder()
-            .insert()
-            .into(Teacher)
-            .values(teacher)
-            .execute();
-  
-            await this.user
-            .createQueryBuilder()
-            .insert()
-            .into(User)
-            .values([
-              {email: teacher.email, password: hashedPassword, is_active: teacher.is_active, role: USER_ROLE.faculty},
-              
-            ])
-            .execute();
-  
-          return {
-            msg: StatusOptions.SUCCESS,
-            description: 'user added',
-            data: teacher
-          };
-        } catch (error) {
-          return {
-            msg: StatusOptions.FAIL,
-            description: error.message,
-            data: null,
-          };
-        }
-      }
-      async addnewTimetable( newTimetable: UpdateTimetableDto): Promise<void> {
-      try {
-        const classroom = await this.classroom
-            .createQueryBuilder()
-            .select('classroom_id')
-            .from('classroom', 'c')
-            .where('c.grade = :grade', { grade: newTimetable.class })
-            .andWhere('c.section = :sections', { sections: newTimetable.section })
-            .getRawOne();
+  async setTeacher(
+    newTeacher: NewTeacherDto,
+  ): Promise<ResponseStatus<Partial<Teacher>>> {
+    const staff_id = shortid.generate();
+    //console.log(stu_id);
+    const password = newTeacher.first_name + staff_id;
+    const staff_email = staff_id + '_' + newTeacher.first_name + '@gmail.com';
+    // const parent_email = stu_id + '_' + newStudent.first_name + '_parent@gmail.com';
+    const hashedPassword = await this.usersService.hashPassword(password);
+    const teacher: Partial<Teacher> = {
+      teacher_id: staff_id,
 
-        if (!classroom) {
-            throw new Error('Classroom not found');
-        }
+      email: staff_email,
+      created_on: new Date(),
+      updated_on: new Date(),
+      first_name: newTeacher.first_name ?? null,
+      last_name: newTeacher.last_name ?? null,
+      gender: newTeacher.gender,
+      dob: newTeacher.dob,
+      speciality: newTeacher.speciality,
+      qualification: newTeacher.qualification,
+      salary: newTeacher.salary,
+      join_on: newTeacher.join_on,
+      experience: newTeacher.experience,
+      mobile: newTeacher.mobile,
+      is_active: false,
+      password: hashedPassword,
+    };
 
-            const class_id = classroom.classroom_id;
+    try {
+      await this.teacher
+        .createQueryBuilder()
+        .insert()
+        .into(Teacher)
+        .values(teacher)
+        .execute();
 
-            // Check if a timetable entry already exists for the same class_id and day
-            const existingTimetable = await this.Time_table.query(`
-                SELECT * 
-                FROM Time_table 
-                WHERE class_id = $1 AND day = $2
-                LIMIT 1
-            `, [class_id, newTimetable.day]);
+      await this.user
+        .createQueryBuilder()
+        .insert()
+        .into(User)
+        .values([
+          {
+            email: teacher.email,
+            password: hashedPassword,
+            is_active: teacher.is_active,
+            role: USER_ROLE.faculty,
+          },
+        ])
+        .execute();
 
-            if (existingTimetable && existingTimetable.length) {
-                throw new Error('Timetable entry already exists for this class and day');
-            }
-        // Fetch classroom_id from the classroom table
-        
-        
-
-        
-
-        // Define the number of periods
-        const numberOfPeriods = newTimetable.period; // Assuming 7 periods for a day
-
-        // Initialize the starting index for the subjects array
-        let subjectIndex = 0;
-        let period_value = 1;
-
-        // Iterate over each period and insert timetable entries
-        for (let i = 1; i <= numberOfPeriods; i++) {
-            // Fetch subject name from the subjects array using the current subject index
-            const subjectName = newTimetable.subjects[subjectIndex];
-            // Fetch subject ID and teacher ID for the current subject name
-            const subject = await this.subject
-                .createQueryBuilder()
-                .select('subject_id')
-                .from("subject","s")
-                .where('s.subject_name = :subject_name', { subject_name: subjectName })
-                .getRawOne();
-
-            if (!subject) {
-                throw new Error(`Subject ${subjectName} not found`);
-            }
-
-            const subject_id = subject.subject_id;
-
-            const timeTable: Partial<Time_table> = {
-                class_id: class_id,
-                subject_id:subject_id,
-                subjects:subjectName,
-                class: newTimetable.class,
-                section: newTimetable.section,
-                day: newTimetable.day,
-                period: period_value, 
-            };
-
-            await this.Time_table
-                .createQueryBuilder()
-                .insert()
-                .into(Time_table)
-                .values(timeTable)
-                .execute();
-            subjectIndex = (subjectIndex + 1) ;
-            period_value++;
-        }
-
-        console.log('Timetable entries inserted successfully');
+      return {
+        msg: StatusOptions.SUCCESS,
+        description: 'user added',
+        data: teacher,
+      };
     } catch (error) {
-        console.error(error.message);
-        throw new BadRequestException(error.message);
+      return {
+        msg: StatusOptions.FAIL,
+        description: error.message,
+        data: null,
+      };
     }
-    
-      
-    } 
+  }
+  async addnewTimetable(
+    newTimetable: UpdateTimetableDto,
+  ): Promise<ResponseStatus<Partial<Time_table[]>>> {
+    try {
+      const classroom = await this.classroom
+        .createQueryBuilder()
+        .select('classroom_id')
+        .from('classroom', 'c')
+        .where('c.grade = :grade', { grade: newTimetable.class })
+        .andWhere('c.section = :sections', { sections: newTimetable.section })
+        .getRawOne();
 
+      if (!classroom) {
+        throw new Error('Classroom not found');
+      }
+
+      const class_id = classroom.classroom_id;
+
+      // Check if a timetable entry already exists for the same class_id and day
+      const numberOfPeriods = newTimetable.period;
+
+      let subjectIndex = 0;
+      let period_value = 1;
+
+      for (let i = 1; i <= numberOfPeriods; i++) {
+        const subjectName = newTimetable.subjects[subjectIndex];
+        const subject = await this.subject
+          .createQueryBuilder()
+          .select('subject_id')
+          .from('subject', 's')
+          .where('s.subject_name = :subject_name', {
+            subject_name: subjectName,
+          })
+          .getRawOne();
+
+        if (!subject) {
+          throw new BadRequestException(`Subject ${subjectName} not found`);
+        }
+
+        const subject_id = subject.subject_id;
+
+        const timeTable: Partial<Time_table> = {
+          class_id: class_id,
+          subject_id: subject_id,
+          subjects: subjectName,
+          class: newTimetable.class,
+          section: newTimetable.section,
+          day: newTimetable.day,
+          period: period_value,
+        };
+
+        await this.Time_table.createQueryBuilder()
+          .insert()
+          .into(Time_table)
+          .values(timeTable)
+          .execute();
+        subjectIndex = subjectIndex + 1;
+        period_value++;
+      }
+
+      const timetable = await this.Time_table.createQueryBuilder()
+        .select()
+        .from('timetable', 's')
+        .where('s.class_id = :class_id', {
+          class_id: class_id,
+        })
+        .getRawMany();
+
+      return {
+        msg: StatusOptions.SUCCESS,
+        description: 'TimeTable added',
+        data: timetable,
+      };
+    } catch (error) {
+      return {
+        msg: StatusOptions.FAIL,
+        description: error.message,
+        data: null,
+      };
+    }
+  }
 }

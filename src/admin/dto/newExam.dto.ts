@@ -5,6 +5,9 @@ export class NewExamDto {
   exam_name: string;
 
   @IsString()
+  acad_year: string;
+
+  @IsString()
   grade: string;
 
   @IsOptional()
