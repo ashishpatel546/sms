@@ -14,9 +14,12 @@ export class Exam {
   exam_name: string;
 
   @Column({ nullable: false })
+  acad_year: string;
+
+  @Column({ nullable: false })
   grade_id: string;
 
-  @Column({ nullable: true})
+  @Column({ nullable: true })
   class_id: string;
 
   @Column({ nullable: false })
