@@ -7,6 +7,8 @@ import { UsersService } from 'src/users/users.service';
 import { ResponseStatus, StatusOptions } from 'src/status';
 import { Parent } from '../entities/parent.entity';
 import { USER_ROLE, User } from 'src/entities/user.entity';
+import { NewTeacherDto } from './dto/newTeacher.dto';
+import { Teacher } from 'src/entities/teacher.entity';
 import { Classroom } from 'src/entities/classroom.entity';
 import { NewClassDto } from './dto/newClass.dto';
 import { Grade } from 'src/entities/grade.entity';
@@ -39,6 +41,7 @@ export class AdminService {
     @InjectDataSource('STUDENT') private readonly student: DataSource,
     @InjectDataSource('PARENT') private readonly parent: DataSource,
     @InjectDataSource('USER') private readonly user: DataSource,
+    @InjectDataSource('TEACHER') private readonly teacher: DataSource,
     @InjectDataSource('CLASSROOM') private readonly classroom: DataSource,
     @InjectDataSource('CLASS_STUDENT')
     private readonly class_student: DataSource,
