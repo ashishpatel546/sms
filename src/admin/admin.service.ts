@@ -36,10 +36,11 @@ export class AdminService {
     @InjectDataSource('GRADE') private readonly grade: DataSource,
     @InjectDataSource('SUBJECT') private readonly subject: DataSource,
     @InjectDataSource('TIME_TABLE') private readonly Time_table : DataSource,
-    @InjectDataSource('GRADE_SUBJECT')
+    @InjectDataSource('GRADE_SUBJECT') private readonly grade_subject:DataSource,
     @InjectDataSource('EXAM') private readonly exam: DataSource,
     @InjectDataSource('EXAM_SCORE') private readonly exam_score: DataSource,
     private readonly usersService: UsersService,
+    
 
   ) {}
 
@@ -136,10 +137,10 @@ export class AdminService {
     newStudent: NewStudentDto,
   ): Promise<ResponseStatus<Partial<Student>>> {
     const student_id = await this.generateStudentId(newStudent);
-    const stu_email = newStudent.first_name + '_' + student_id + '@gmail.com';
+    const stu_email =  student_id  + '_' + newStudent.first_name  + '@gmail.com';
     const password = newStudent.first_name + student_id;
     const parent_email =
-      newStudent.first_name + '_' + student_id + '_parent@gmail.com';
+        student_id + '_' + newStudent.first_name + 'parent@gmail.com';
     const hashedPassword = await this.usersService.hashPassword(password);
 
     const student: Partial<Student> = {
@@ -150,14 +151,14 @@ export class AdminService {
       first_name: newStudent.first_name ?? null,
       last_name: newStudent.last_name ?? null,
       gender: newStudent.gender,
-      currentClass: newStudent.currentClass,
-      classSec: newStudent.classSec,
+      current_class: newStudent.currentClass,
+      class_sec: newStudent.classSec,
       addressLine1: newStudent.addressLine1,
       addressLine2: newStudent.addressLine2 ?? null,
       dob: newStudent.dob,
-      admissionID: newStudent.admissionID,
-      admissionDate: newStudent.admissionDate,
-      admissionSession: newStudent.admissionSession,
+      admission_id: newStudent.admissionID,
+      admission_date: newStudent.admissionDate,
+      admission_session: newStudent.admissionSession,
       prevSchool: newStudent.prevSchool ?? null,
       is_active: false,
       password: hashedPassword,
@@ -167,7 +168,7 @@ export class AdminService {
       parent_student_id: student_id,
       created_on: new Date(),
       updated_on: new Date(),
-      parent_email: parent_email,
+      email: parent_email,
       father_name: newStudent.father_name,
       father_email: newStudent.father_email ?? null,
       father_mobile: newStudent.father_mobile,
@@ -187,8 +188,8 @@ export class AdminService {
         .createQueryBuilder()
         .select('classroom_id')
         .from('classroom', 'c')
-        .where('c.grade = :grade', { grade: student.currentClass })
-        .andWhere('c.section = :section', { section: student.classSec })
+        .where('c.grade = :grade', { grade: student.current_class })
+        .andWhere('c.section = :section', { section: student.class_sec })
         .getRawOne();
 
       if (!classroom_id) {
@@ -227,7 +228,7 @@ export class AdminService {
         .createQueryBuilder()
         .select('classroom_id')
         .from('classroom', 'c')
-        .where('c.grade = :grade', { grade: student.currentClass })
+        .where('c.grade = :grade', { grade: student.current_class })
        // .andWhere('c.section = :section',{});
 
       //console.log('class_id', class_id);
@@ -256,7 +257,7 @@ export class AdminService {
           },
 
           {
-            email: parent.parent_email,
+            email: parent.email,
             password: hashedPassword,
             is_active: parent.is_active,
             role: USER_ROLE.parent,
@@ -550,91 +551,72 @@ export class AdminService {
           };
         }
       }
-      async addnewTimetable( newTimetable: UpdateTimetableDto): Promise<void> {
-      try {
-        const classroom = await this.classroom
-            .createQueryBuilder()
-            .select('classroom_id')
-            .from('classroom', 'c')
-            .where('c.grade = :grade', { grade: newTimetable.class })
-            .andWhere('c.section = :sections', { sections: newTimetable.section })
-            .getRawOne();
-
-        if (!classroom) {
-            throw new Error('Classroom not found');
-        }
-
-            const class_id = classroom.classroom_id;
-
-            // Check if a timetable entry already exists for the same class_id and day
-            const existingTimetable = await this.Time_table.query(`
-                SELECT * 
-                FROM Time_table 
-                WHERE class_id = $1 AND day = $2
-                LIMIT 1
-            `, [class_id, newTimetable.day]);
-
-            if (existingTimetable && existingTimetable.length) {
-                throw new Error('Timetable entry already exists for this class and day');
-            }
-        // Fetch classroom_id from the classroom table
-        
-        
-
-        
-
-        // Define the number of periods
-        const numberOfPeriods = newTimetable.period; // Assuming 7 periods for a day
-
-        // Initialize the starting index for the subjects array
-        let subjectIndex = 0;
-        let period_value = 1;
-
-        // Iterate over each period and insert timetable entries
-        for (let i = 1; i <= numberOfPeriods; i++) {
-            // Fetch subject name from the subjects array using the current subject index
-            const subjectName = newTimetable.subjects[subjectIndex];
-            // Fetch subject ID and teacher ID for the current subject name
-            const subject = await this.subject
+      async addnewTimetable(newTimetable: UpdateTimetableDto): Promise<void> {
+        try {
+            const classroom = await this.classroom
                 .createQueryBuilder()
-                .select('subject_id')
-                .from("subject","s")
-                .where('s.subject_name = :subject_name', { subject_name: subjectName })
+                .select('classroom_id')
+                .from('classroom', 'c')
+                .where('c.grade = :grade', { grade: newTimetable.class })
+                .andWhere('c.section = :sections', { sections: newTimetable.section })
                 .getRawOne();
-
-            if (!subject) {
-                throw new Error(`Subject ${subjectName} not found`);
+    
+            if (!classroom) {
+                throw new Error('Classroom not found');
             }
-
-            const subject_id = subject.subject_id;
-
-            const timeTable: Partial<Time_table> = {
-                class_id: class_id,
-                subject_id:subject_id,
-                subjects:subjectName,
-                class: newTimetable.class,
-                section: newTimetable.section,
-                day: newTimetable.day,
-                period: period_value, 
-            };
-
-            await this.Time_table
-                .createQueryBuilder()
-                .insert()
-                .into(Time_table)
-                .values(timeTable)
-                .execute();
-            subjectIndex = (subjectIndex + 1) ;
-            period_value++;
+    
+            const class_id = classroom.classroom_id;
+    
+            // Define the number of periods
+            const numberOfPeriods = newTimetable.period;
+    
+            // Iterate over each period and insert timetable entries
+            for (let i = 1; i <= numberOfPeriods; i++) {
+                // Fetch subject name from the subjects array using the current period number
+                const subjectName = newTimetable.subjects[i - 1];
+                // Fetch subject ID for the current subject name
+                const subject = await this.subject
+                    .createQueryBuilder()
+                    .select('subject_id')
+                    .from('subject', 's')
+                    .where('s.subject_name = :subject_name', { subject_name: subjectName })
+                    .getRawOne();
+    
+                if (!subject) {
+                    throw new Error(`Subject ${subjectName} not found`);
+                }
+    
+                const subject_id = subject.subject_id;
+    
+                // Assign teacher IDs to periods based on the period number
+                const teacher_id = newTimetable.teacher_id[i - 1];
+                
+                // Insert the timetable entry
+                const timeTable: Partial<Time_table> = {
+                    class_id: class_id,
+                    subject_id: subject_id,
+                    subjects: subjectName,
+                    class: newTimetable.class,
+                    section: newTimetable.section,
+                    teacher_id: teacher_id,
+                    day: newTimetable.day,
+                    period: i,
+                };
+    
+                await this.Time_table
+                    .createQueryBuilder()
+                    .insert()
+                    .into(Time_table)
+                    .values(timeTable)
+                    .execute();
+            }
+    
+            console.log('Timetable entries inserted successfully');
+        } catch (error) {
+            console.error(error.message);
+            throw new BadRequestException(error.message);
         }
-
-        console.log('Timetable entries inserted successfully');
-    } catch (error) {
-        console.error(error.message);
-        throw new BadRequestException(error.message);
     }
     
-      
-    } 
-
+    
 }

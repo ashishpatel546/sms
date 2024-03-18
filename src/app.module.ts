@@ -11,6 +11,7 @@ import { SharedModule } from './config/shared.module';
 import { AdminModule } from './admin/admin.module';
 import { StudentModule } from './student/student.module';
 import { TeacherModule } from './teacher/teacher.module';
+import { ParentsModule } from './parents/parents.module';
 
 @Module({
   imports: [
@@ -107,12 +108,20 @@ import { TeacherModule } from './teacher/teacher.module';
       useFactory: (configService: DbConfig) =>
         configService.getPostGresConfig(),
     }),
+    TypeOrmModule.forRootAsync({
+      imports: [SharedModule],
+      inject: [DbConfig],
+      name: 'ATTENDANCE',
+      useFactory: (configService: DbConfig) =>
+        configService.getPostGresConfig(),
+    }),
 
     AuthModule,
     UsersModule,
     AdminModule,
     StudentModule,
     TeacherModule,
+    ParentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
