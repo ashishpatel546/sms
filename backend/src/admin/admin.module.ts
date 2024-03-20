@@ -14,6 +14,7 @@ import { Exam } from 'src/entities/exam.entity';
 import { Exam_Score } from 'src/entities/exam_score.entity';
 import { Teacher } from 'src/entities/teacher.entity';
 import { Time_table } from 'src/entities/timetable.entity';
+import { Grade_Fees } from 'src/entities/grade_fees.entity';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { Time_table } from 'src/entities/timetable.entity';
     TypeOrmModule.forFeature([Exam_Score], 'EXAM_SCORE'),
     TypeOrmModule.forFeature([Teacher], 'TEACHER'),
     TypeOrmModule.forFeature([Time_table], 'TIME_TABLE'),
+    TypeOrmModule.forFeature([Grade_Fees], 'GRADE_FEES'),
   ],
   providers: [AdminService, UsersService],
   controllers: [AdminController],

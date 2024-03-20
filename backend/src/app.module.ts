@@ -89,7 +89,6 @@ import { ParentsModule } from './parents/parents.module';
     TypeOrmModule.forRootAsync({
       imports: [SharedModule],
       inject: [DbConfig],
-
       name: 'EXAM',
       useFactory: (configService: DbConfig) =>
         configService.getPostGresConfig(),
@@ -111,7 +110,7 @@ import { ParentsModule } from './parents/parents.module';
     TypeOrmModule.forRootAsync({
       imports: [SharedModule],
       inject: [DbConfig],
-      name: 'ATTENDANCE',
+      name: 'GRADE_FEES',
       useFactory: (configService: DbConfig) =>
         configService.getPostGresConfig(),
     }),

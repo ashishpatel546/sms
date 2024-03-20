@@ -23,6 +23,15 @@ import { NewExamScoreDto } from './dto/newExamScore.dto';
 import { Exam_Score } from 'src/entities/exam_score.entity';
 import { createClient } from 'redis';
 import config from 'src/config/config';
+import {
+  dateObjToDateString,
+  parseDateToDbFormat,
+  stringToDate,
+  timestampToDateString,
+} from 'src/utilities/dateMethods';
+import { NewFeesDto } from './dto/newStudentFees.dto';
+import { NewGradeFeesDto } from './dto/newGradeFees.dto';
+import { Grade_Fees } from 'src/entities/grade_fees.entity';
 // import {v4 as uuidv4} from 'uuid';
 const { v4: uuidv4 } = require('uuid');
 const shortid = require('shortid');
@@ -47,12 +56,13 @@ export class AdminService {
     private readonly class_student: DataSource,
     @InjectDataSource('GRADE') private readonly grade: DataSource,
     @InjectDataSource('SUBJECT') private readonly subject: DataSource,
-    @InjectDataSource('TIME_TABLE') private readonly Time_table : DataSource,
-    @InjectDataSource('GRADE_SUBJECT') private readonly grade_subject:DataSource,
+    @InjectDataSource('TIME_TABLE') private readonly Time_table: DataSource,
+    @InjectDataSource('GRADE_SUBJECT')
+    private readonly grade_subject: DataSource,
     @InjectDataSource('EXAM') private readonly exam: DataSource,
     @InjectDataSource('EXAM_SCORE') private readonly exam_score: DataSource,
+    @InjectDataSource('GRADE_FEES') private readonly grade_fees: DataSource,
     private readonly usersService: UsersService,
-
   ) {}
 
   async getStudent(): Promise<ResponseStatus<Student[]>> {
@@ -148,10 +158,10 @@ export class AdminService {
     newStudent: NewStudentDto,
   ): Promise<ResponseStatus<Partial<Student>>> {
     const student_id = await this.generateStudentId(newStudent);
-    const stu_email =  student_id  + '_' + newStudent.first_name  + '@gmail.com';
+    const stu_email = newStudent.first_name + '.' + student_id + '@gmail.com';
     const password = newStudent.first_name + student_id;
     const parent_email =
-        student_id + '_' + newStudent.first_name + 'parent@gmail.com';
+      newStudent.first_name + '.' + student_id + '.parent@gmail.com';
     const hashedPassword = await this.usersService.hashPassword(password);
 
     const student: Partial<Student> = {
@@ -238,8 +248,8 @@ export class AdminService {
         .createQueryBuilder()
         .select('classroom_id')
         .from('classroom', 'c')
-        .where('c.grade = :grade', { grade: student.current_class })
-       // .andWhere('c.section = :section',{});
+        .where('c.grade = :grade', { grade: student.current_class });
+      // .andWhere('c.section = :section',{});
 
       //console.log('class_id', class_id);
 
@@ -431,27 +441,111 @@ export class AdminService {
         secure: false, // true for 465, false for other ports
         auth: {
           user: 'abcdefg101201@gmail.com',
-          pass: 'bvya hapk iatq plkp',
+          pass: process.env.SENDER_MAIL_PASS,
         },
       });
 
-       let mailOptions = {
-         from: {
-           name: 'ABC school',
-           address: 'abcdefg101201@gmail.com',
-         },
-         to: 'avanshika599@gmail.com',
-         subject: 'Exam Reminder',
-         text: 'Exam Reminder',
-         html: 'Exam Reminder',
-       };
-    const info = await transporter.sendMail(mailOptions);
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
 
+      const exams = await this.exam
+        .createQueryBuilder()
+        .select()
+        .from('exam', 'exam')
+        .where('DATE(exam.exam_date) = :tomorrowDate', {
+          tomorrowDate: tomorrow.toISOString().split('T')[0],
+        })
+        .getRawMany();
 
+      const len = exams.length;
+
+      for (let i = 0; i < len; i++) {
+        let students;
+        let exam_details;
+
+        if (exams[i].class_id) {
+          students = await this.class_student
+            .createQueryBuilder()
+            .select([
+              's.student_id AS student_id',
+              's.first_name AS student_first_name',
+              's.email AS student_email',
+              'p.parent_email AS parent_email',
+            ])
+            .from('class_student', 'cs')
+            .innerJoin('student', 's', 's.student_id = cs.student_id')
+            .innerJoin('parent', 'p', 'p.parent_student_id = s.student_id')
+            .where('cs.classroom_id= :id', { id: exams[i].class_id })
+            .getRawMany();
+        } else {
+          students = await this.class_student
+            .createQueryBuilder()
+            .select([
+              's.student_id AS student_id',
+              's.first_name AS student_first_name',
+              's.email AS student_email',
+              'p.parent_email AS parent_email',
+            ])
+            .from('grade', 'g')
+            .innerJoin('classroom', 'c', 'c.grade = g.grade')
+            .innerJoin(
+              'class_student',
+              'cs',
+              'cs.classroom_id = c.classroom_id',
+            )
+            .innerJoin('student', 's', 's.student_id = cs.student_id')
+            .innerJoin('parent', 'p', 'p.parent_student_id = s.student_id')
+            .where('g.grade_id= :id', { id: exams[i].grade_id })
+            .getRawMany();
+        }
+
+        exam_details = await this.exam
+          .createQueryBuilder()
+          .select([
+            's.subject_name',
+            'exam.exam_name AS exam_name',
+            'exam.exam_date AS exam_date',
+            'exam.duration AS duration',
+            'exam.start_time AS start_time',
+          ])
+          .from('exam', 'exam')
+          .innerJoin('subject', 's', 'exam.subject_id = s.subject_id')
+          .where('exam.exam_id= :id', {
+            id: exams[i].exam_id,
+          })
+          .getRawOne();
+
+        const toEmails = students.map((student) => student.parent_email);
+        const ccEmails = students.map((student) => student.student_email);
+
+        const htmlContent = `<p>This email is being sent to remind you of your ward's scheduled exam tomorrow. Exam details are mentioned below:</p>
+                              <ul>
+                                <li><strong>Exam Name:</strong> ${exam_details.exam_name}</li>
+                                <li><strong>Exam Subject:</strong> ${exam_details.subject_name}</li>
+                                <li><strong>Exam Date:</strong> ${timestampToDateString(exam_details.exam_date)}</li>
+                                <li><strong>Exam Start Time:</strong> ${exam_details.start_time}</li>
+                                <li><strong>Exam Duration:</strong> ${exam_details.duration}</li>
+                              </ul>`;
+        // for (let j = 0; j < students.length; j++) {
+        let mailOptions = {
+          from: {
+            name: 'ABC school',
+            address: 'abcdefg101201@gmail.com',
+          },
+          // to: students[j].parent_email,
+          // cc: students[j].student_email,
+          to: toEmails.join(', '), // Join multiple emails with commas
+          cc: ccEmails.join(', '),
+          subject: 'Exam Reminder',
+          html: htmlContent,
+        };
+        const info = await transporter.sendMail(mailOptions);
+        // }
+      }
       return {
         msg: StatusOptions.SUCCESS,
         description: 'Mail sent',
-        data: info,
+        // data: null,
       };
     } catch (error) {
       return {
@@ -668,6 +762,12 @@ export class AdminService {
         throw new BadRequestException('No such subject exists for this class');
       }
 
+      const exam_date = await stringToDate(newExam.exam_date);
+      // const exam_dates = await parseDateToDbFormat(exam_date);
+      // const ex = await stringToDate(exam_dates);
+      // console.log("Date", ex);
+      // console.log("Date1", dateObjToDateString(ex));
+
       const new_exam = {
         exam_id: shortid.generate(),
         grade_id: grade_id.grade_id,
@@ -675,7 +775,7 @@ export class AdminService {
         subject_id: subject_id.subject_id ?? null,
         exam_name: newExam.exam_name,
         acad_year: newExam.acad_year,
-        exam_date: newExam.exam_date,
+        exam_date: exam_date,
         start_time: newExam.start_time,
         duration: newExam.duration,
         syllabus: newExam.syllabus ?? null,
@@ -702,152 +802,181 @@ export class AdminService {
     }
   }
 
-    
-    async setTeacher(newTeacher: NewTeacherDto):Promise<ResponseStatus<Partial<Teacher>>> {
-      const staff_id = shortid.generate(); 
-      //console.log(stu_id); 
-      const password = newTeacher.first_name + staff_id;
-      const staff_email = staff_id + '_' + newTeacher.first_name + '@gmail.com';
-     // const parent_email = stu_id + '_' + newStudent.first_name + '_parent@gmail.com';
-        const hashedPassword = await this.usersService.hashPassword(password);
-        const teacher: Partial<Teacher> = {
-          teacher_id: staff_id,
-         
-          email: staff_email,
-          created_on: new Date(),
-          updated_on: new Date(),
-          first_name: newTeacher.first_name ?? null,
-          last_name: newTeacher.last_name ?? null,
-          gender: newTeacher.gender,
-          dob: newTeacher.dob,
-          speciality:newTeacher.speciality,
-          qualification:newTeacher.qualification,
-          salary:newTeacher.salary,
-          join_on:newTeacher.join_on,
-          experience:newTeacher.experience,
-          mobile: newTeacher.mobile,
-          is_active: false,
-          password: hashedPassword,
-        };
-  
-       
-  
-        try {
-          await this.teacher
-            .createQueryBuilder()
-            .insert()
-            .into(Teacher)
-            .values(teacher)
-            .execute();
-  
-            await this.user
-            .createQueryBuilder()
-            .insert()
-            .into(User)
-            .values([
-              {email: teacher.email, password: hashedPassword, is_active: teacher.is_active, role: USER_ROLE.faculty},
-              
-            ])
-            .execute();
-  
-          return {
-            msg: StatusOptions.SUCCESS,
-            description: 'user added',
-            data: teacher
-          };
-        } catch (error) {
-          return {
-            msg: StatusOptions.FAIL,
-            description: error.message,
-            data: null,
-          };
-        }
-      }
-      async addnewTimetable( newTimetable: UpdateTimetableDto): Promise<void> {
-      try {
-        const classroom = await this.classroom
-            .createQueryBuilder()
-            .select('classroom_id')
-            .from('classroom', 'c')
-            .where('c.grade = :grade', { grade: newTimetable.class })
-            .andWhere('c.section = :sections', { sections: newTimetable.section })
-            .getRawOne();
+  async setTeacher(
+    newTeacher: NewTeacherDto,
+  ): Promise<ResponseStatus<Partial<Teacher>>> {
+    const staff_id = shortid.generate();
+    //console.log(stu_id);
+    const password = newTeacher.first_name + staff_id;
+    const staff_email = staff_id + '_' + newTeacher.first_name + '@gmail.com';
+    // const parent_email = stu_id + '_' + newStudent.first_name + '_parent@gmail.com';
+    const hashedPassword = await this.usersService.hashPassword(password);
+    const teacher: Partial<Teacher> = {
+      teacher_id: staff_id,
 
-        if (!classroom) {
-            throw new Error('Classroom not found');
-        }
+      email: staff_email,
+      created_on: new Date(),
+      updated_on: new Date(),
+      first_name: newTeacher.first_name ?? null,
+      last_name: newTeacher.last_name ?? null,
+      gender: newTeacher.gender,
+      dob: newTeacher.dob,
+      speciality: newTeacher.speciality,
+      qualification: newTeacher.qualification,
+      salary: newTeacher.salary,
+      join_on: newTeacher.join_on,
+      experience: newTeacher.experience,
+      mobile: newTeacher.mobile,
+      is_active: false,
+      password: hashedPassword,
+    };
 
-            const class_id = classroom.classroom_id;
+    try {
+      await this.teacher
+        .createQueryBuilder()
+        .insert()
+        .into(Teacher)
+        .values(teacher)
+        .execute();
 
-            // Check if a timetable entry already exists for the same class_id and day
-            const existingTimetable = await this.Time_table.query(`
-                SELECT * 
-                FROM Time_table 
-                WHERE class_id = $1 AND day = $2
-                LIMIT 1
-            `, [class_id, newTimetable.day]);
+      await this.user
+        .createQueryBuilder()
+        .insert()
+        .into(User)
+        .values([
+          {
+            email: teacher.email,
+            password: hashedPassword,
+            is_active: teacher.is_active,
+            role: USER_ROLE.faculty,
+          },
+        ])
+        .execute();
 
-            if (existingTimetable && existingTimetable.length) {
-                throw new Error('Timetable entry already exists for this class and day');
-            }
-        // Fetch classroom_id from the classroom table
-        
-        
-
-        
-
-        // Define the number of periods
-        const numberOfPeriods = newTimetable.period; // Assuming 7 periods for a day
-
-        // Initialize the starting index for the subjects array
-        let subjectIndex = 0;
-        let period_value = 1;
-
-        // Iterate over each period and insert timetable entries
-        for (let i = 1; i <= numberOfPeriods; i++) {
-            // Fetch subject name from the subjects array using the current subject index
-            const subjectName = newTimetable.subjects[subjectIndex];
-            // Fetch subject ID and teacher ID for the current subject name
-            const subject = await this.subject
-                .createQueryBuilder()
-                .select('subject_id')
-                .from("subject","s")
-                .where('s.subject_name = :subject_name', { subject_name: subjectName })
-                .getRawOne();
-
-            if (!subject) {
-                throw new Error(`Subject ${subjectName} not found`);
-            }
-
-            const subject_id = subject.subject_id;
-
-            const timeTable: Partial<Time_table> = {
-                class_id: class_id,
-                subject_id:subject_id,
-                subjects:subjectName,
-                class: newTimetable.class,
-                section: newTimetable.section,
-                day: newTimetable.day,
-                period: period_value, 
-            };
-
-            await this.Time_table
-                .createQueryBuilder()
-                .insert()
-                .into(Time_table)
-                .values(timeTable)
-                .execute();
-            subjectIndex = (subjectIndex + 1) ;
-            period_value++;
-        }
-
-        console.log('Timetable entries inserted successfully');
+      return {
+        msg: StatusOptions.SUCCESS,
+        description: 'user added',
+        data: teacher,
+      };
     } catch (error) {
-        console.error(error.message);
-        throw new BadRequestException(error.message);
+      return {
+        msg: StatusOptions.FAIL,
+        description: error.message,
+        data: null,
+      };
     }
-    
-      
-    } 
+  }
+  async addnewTimetable(
+    newTimetable: UpdateTimetableDto,
+  ): Promise<ResponseStatus<Partial<Time_table[]>>> {
+    try {
+      const classroom = await this.classroom
+        .createQueryBuilder()
+        .select('classroom_id')
+        .from('classroom', 'c')
+        .where('c.grade = :grade', { grade: newTimetable.class })
+        .andWhere('c.section = :sections', { sections: newTimetable.section })
+        .getRawOne();
 
+      if (!classroom) {
+        throw new Error('Classroom not found');
+      }
+
+      const class_id = classroom.classroom_id;
+
+      // Check if a timetable entry already exists for the same class_id and day
+      const numberOfPeriods = newTimetable.period;
+
+      let subjectIndex = 0;
+      let period_value = 1;
+
+      for (let i = 1; i <= numberOfPeriods; i++) {
+        const subjectName = newTimetable.subjects[subjectIndex];
+        const subject = await this.subject
+          .createQueryBuilder()
+          .select('subject_id')
+          .from('subject', 's')
+          .where('s.subject_name = :subject_name', {
+            subject_name: subjectName,
+          })
+          .getRawOne();
+
+        if (!subject) {
+          throw new BadRequestException(`Subject ${subjectName} not found`);
+        }
+
+        const subject_id = subject.subject_id;
+
+        const timeTable: Partial<Time_table> = {
+          class_id: class_id,
+          subject_id: subject_id,
+          subjects: subjectName,
+          class: newTimetable.class,
+          section: newTimetable.section,
+          day: newTimetable.day,
+          period: period_value,
+        };
+
+        await this.Time_table.createQueryBuilder()
+          .insert()
+          .into(Time_table)
+          .values(timeTable)
+          .execute();
+        subjectIndex = subjectIndex + 1;
+        period_value++;
+      }
+
+      const timetable = await this.Time_table.createQueryBuilder()
+        .select()
+        .from('timetable', 's')
+        .where('s.class_id = :class_id', {
+          class_id: class_id,
+        })
+        .getRawMany();
+
+      return {
+        msg: StatusOptions.SUCCESS,
+        description: 'TimeTable added',
+        data: timetable,
+      };
+    } catch (error) {
+      return {
+        msg: StatusOptions.FAIL,
+        description: error.message,
+        data: null,
+      };
+    }
+  }
+
+  async setGradeFees(
+    newGradeFees: NewGradeFeesDto,
+  ): Promise<ResponseStatus<Partial<Grade_Fees[]>>> {
+    try {
+      const grade = await this.grade
+        .createQueryBuilder()
+        .select()
+        .from('grade', 'g')
+        .where('g.grade= :grade', { grade: newGradeFees.grade })
+        .getRawOne();
+      if (!grade) {
+        throw new BadRequestException('No such Grade exists.');
+      }
+      const total_fees = newGradeFees.total_fees;
+      const total_quarters = newGradeFees.total_quarters;
+
+      await this.grade_fees.createQueryBuilder;
+      return {
+        msg: StatusOptions.SUCCESS,
+        description: 'Grade Fees Updated',
+        data: null,
+      };
+    } catch (error) {
+      return {
+        msg: StatusOptions.FAIL,
+        description: error.message,
+        data: null,
+      };
+    }
+  }
+  async setFees(newFees: NewFeesDto) {}
 }

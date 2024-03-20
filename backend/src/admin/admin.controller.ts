@@ -7,6 +7,8 @@ import { NewExamDto } from './dto/newExam.dto';
 import { UpdateTimetableDto } from './dto/update-timetable.dto';
 import { log } from 'console';
 import { NewExamScoreDto } from './dto/newExamScore.dto';
+import { NewFeesDto } from './dto/newStudentFees.dto';
+import { NewGradeFeesDto } from './dto/newGradeFees.dto';
 
 @Controller('admin')
 export class AdminController {
@@ -53,5 +55,15 @@ export class AdminController {
   @Get('/send-exam-reminder')
   sendExamReminders() {
     return this.adminService.sendExamReminders();
+  }
+
+  @Post('/set-grade-fees-data')
+  setGradeFees(@Body() body: NewGradeFeesDto) {
+    return this.adminService.setGradeFees(body);
+  }
+
+  @Post('/set-student-fees-data')
+  setFees(@Body() body: NewFeesDto) {
+    return this.adminService.setFees(body);
   }
 }
