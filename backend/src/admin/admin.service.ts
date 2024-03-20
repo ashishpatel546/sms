@@ -172,14 +172,14 @@ export class AdminService {
       first_name: newStudent.first_name ?? null,
       last_name: newStudent.last_name ?? null,
       gender: newStudent.gender,
-      currentClass: newStudent.currentClass,
-      classSec: newStudent.classSec,
+      current_class: newStudent.currentClass,
+      class_sec: newStudent.classSec,
       addressLine1: newStudent.addressLine1,
       addressLine2: newStudent.addressLine2 ?? null,
       dob: newStudent.dob,
-      admissionID: newStudent.admissionID,
-      admissionDate: newStudent.admissionDate,
-      admissionSession: newStudent.admissionSession,
+      admission_id: newStudent.admissionID,
+      admission_date: newStudent.admissionDate,
+      admission_session: newStudent.admissionSession,
       prevSchool: newStudent.prevSchool ?? null,
       is_active: false,
       password: hashedPassword,
@@ -189,7 +189,7 @@ export class AdminService {
       parent_student_id: student_id,
       created_on: new Date(),
       updated_on: new Date(),
-      parent_email: parent_email,
+      email: parent_email,
       father_name: newStudent.father_name,
       father_email: newStudent.father_email ?? null,
       father_mobile: newStudent.father_mobile,
@@ -209,8 +209,8 @@ export class AdminService {
         .createQueryBuilder()
         .select('classroom_id')
         .from('classroom', 'c')
-        .where('c.grade = :grade', { grade: student.currentClass })
-        .andWhere('c.section = :section', { section: student.classSec })
+        .where('c.grade = :grade', { grade: student.current_class })
+        .andWhere('c.section = :section', { section: student.class_sec })
         .getRawOne();
 
       if (!classroom_id) {
@@ -248,7 +248,7 @@ export class AdminService {
         .createQueryBuilder()
         .select('classroom_id')
         .from('classroom', 'c')
-        .where('c.grade = :grade', { grade: student.currentClass });
+        .where('c.grade = :grade', { grade: student.current_class });
       // .andWhere('c.section = :section',{});
 
       //console.log('class_id', class_id);
@@ -277,7 +277,7 @@ export class AdminService {
           },
 
           {
-            email: parent.parent_email,
+            email: parent.email,
             password: hashedPassword,
             is_active: parent.is_active,
             role: USER_ROLE.parent,
@@ -441,7 +441,7 @@ export class AdminService {
         secure: false, // true for 465, false for other ports
         auth: {
           user: 'abcdefg101201@gmail.com',
-          pass: 'bvya hapk iatq plkp',
+          pass: process.env.SENDER_MAIL_PASS,
         },
       });
 
