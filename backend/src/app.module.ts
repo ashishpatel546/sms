@@ -88,7 +88,6 @@ import { TeacherModule } from './teacher/teacher.module';
     TypeOrmModule.forRootAsync({
       imports: [SharedModule],
       inject: [DbConfig],
-
       name: 'EXAM',
       useFactory: (configService: DbConfig) =>
         configService.getPostGresConfig(),
@@ -104,6 +103,13 @@ import { TeacherModule } from './teacher/teacher.module';
       imports: [SharedModule],
       inject: [DbConfig],
       name: 'TIME_TABLE',
+      useFactory: (configService: DbConfig) =>
+        configService.getPostGresConfig(),
+    }),
+    TypeOrmModule.forRootAsync({
+      imports: [SharedModule],
+      inject: [DbConfig],
+      name: 'GRADE_FEES',
       useFactory: (configService: DbConfig) =>
         configService.getPostGresConfig(),
     }),

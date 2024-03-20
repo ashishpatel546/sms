@@ -17,8 +17,8 @@ export class NewExamDto {
   @IsString()
   subject: string;
 
-  @IsDate()
-  exam_date: Date;
+  // @IsDate()
+  exam_date: string;
 
   @IsString()
   start_time: string;
