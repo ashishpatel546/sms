@@ -23,4 +23,23 @@ export class ParentsController {
         console.log(parents_id)
         return this.parentsService.getProfile(parents_id);
     }
+
+    @ApiBearerAuth('access-token')
+    @UseGuards(JwtAuthGuard)
+    @Get('/get-exam-results')
+    async getExamResults(@CurrentUser() parent: Partial<Parent>) {
+        if (!parent || !parent.email) {
+            throw new Error('Parent email is missing or undefined');
+        }
+
+        const emailParts = parent.email.split('_');
+        const parentId = emailParts[0];
+
+        return await this.parentsService.getExamResults(parentId);
+
+        
+        
+        
+    }
+
 }

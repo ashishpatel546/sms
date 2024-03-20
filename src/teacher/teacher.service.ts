@@ -19,20 +19,20 @@ export class TeacherService {
       const result = await this.teacher
         .createQueryBuilder()
         .select([
-          't.first_name',
-          't.last_name',
-          't.teacher_id',
-          't.join_on',
-          't.email',
-          't.dob',
-          't.classTeacher',
-          't.mobile',
-          't.speciality',
-          't.qualification',
-          't.class_id',
-          't.salary',
-          't.experience',
-          't.gender',
+          'first_name',
+          'last_name',
+          'teacher_id',
+          'join_on',
+          'email',
+          'dob',
+          'classTeacher',
+          'mobile',
+          'speciality',
+          'qualification',
+          'class_id',
+          'salary',
+          'experience',
+          'gender',
         ])
         .from('teacher', 't')
         .where('t.teacher_id = :id', { id: teacher_id })
@@ -55,11 +55,11 @@ export class TeacherService {
    try{ const timetable = await this.Time_table
             .createQueryBuilder()
             .select([
-              't.day',
-              't.class',
-              't.section',
-              't.period',
-              't.subjects'
+              'day',
+              'class',
+              'section',
+              'period',
+              'subjects'
             ])
             .from('Time_table', 't')
             .where('t.teacher_id = :teacher_id', { teacher_id: teacher_id })
@@ -79,7 +79,7 @@ export class TeacherService {
             };
           }
         }
-           // return timetable
+           
           
           
           
