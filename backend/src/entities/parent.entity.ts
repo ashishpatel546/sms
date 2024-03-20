@@ -16,7 +16,7 @@ export class Parent {
   updated_on: Date;
 
   @Column({ nullable: false, unique: true})
-  parent_email: string;
+  email: string;
 
   @Column({ nullable: false })
   password: string;

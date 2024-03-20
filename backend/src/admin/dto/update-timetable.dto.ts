@@ -11,7 +11,7 @@ export class UpdateTimetableDto {
     period:number;
     @IsArray()
     subjects:string[];
-   @IsOptional()
+   
     @IsArray()
     teacher_id:string[];
     

@@ -26,7 +26,7 @@ export class Time_table {
   @Column()
   period: number;
 
-  @Column({ nullable: true })
+  @Column({nullable:false})
   teacher_id: string;
 
   //   @ManyToOne(() => Teacher, { eager: true })

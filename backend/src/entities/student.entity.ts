@@ -42,10 +42,10 @@ export class Student {
   gender: string;
 
   @Column({ nullable: false })
-  currentClass: string;
+  current_class: string;
 
   @Column({ nullable: false })
-  classSec: string;
+  class_sec: string;
 
   @Column({ nullable: false })
   addressLine1: string;
@@ -57,13 +57,13 @@ export class Student {
   dob: Date;
 
   @Column({ nullable: false, unique: true })
-  admissionID: string;
+  admission_id: string;
 
   @Column({ nullable: false })
-  admissionDate: string;
+  admission_date: string;
 
   @Column({ nullable: false })
-  admissionSession: string;
+  admission_session: string;
 
   @Column({ nullable: true })
   prevSchool: string;

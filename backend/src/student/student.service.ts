@@ -3,7 +3,7 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import { compare } from 'bcryptjs';
 import { Student } from 'src/entities/student.entity';
 import { ResponseStatus, StatusOptions } from 'src/status';
-import { DataSource, createQueryBuilder } from 'typeorm';
+import { DataSource } from 'typeorm';
 
 @Injectable()
 export class StudentService {
@@ -15,44 +15,29 @@ export class StudentService {
         try {
             console.log('student_id', student_id);
 
-            // const student = await this.student
-            //   .createQueryBuilder()
-            //    .select()
-            //   .from('student', 's')
-            //   .where('s.student_id = :id',{id: student_id})
-            //   .getRawOne();
-
-            //   const parent = await this.parent
-            //   .createQueryBuilder()
-            //    .select()
-            //   .from('parent', 'p')
-            //   .where('p.parent_student_id = :id',{id: student_id})
-            //   .getRawOne();
+          
             const result = await this.student
             .createQueryBuilder('student','s')
             .leftJoinAndSelect('parent', 'p', 'p.parent_student_id = s.student_id')
             .select([
-                's.student_id',
-                's.first_name',
-                's.last_name',
-                's.email',
-                's.currentClass',
-                's.classSec',
-                's.gender',
-                's.dob',
-                's.admissionID',
-                's.admissionDate',
-                's.admissionSession',
-                's.prevSchool',
-                
-            
-
-                'p.father_name',
-                'p.father_mobile',
-                'p.father_occupation',
-                'p.mother_name',
-                'p.mother_mobile',
-                'p.mother_occupation',
+                'student_id',
+                'first_name',
+                'last_name',
+                'email',
+                'currentClass',
+                'classSec',
+                'gender',
+                'dob',
+                'admissionID',
+                'admissionDate',
+                'admissionSession',
+                'prevSchool',
+                'father_name',
+                'father_mobile',
+                'father_occupation',
+                'mother_name',
+                'mother_mobile',
+                'mother_occupation',
               ])
             .where('s.student_id = :id', { id: student_id })
             .getRawOne();
